@@ -45,3 +45,20 @@ full-body (OSC) trackers have not been tested at all.
 
 LGPL-3.0, as Vivecraft. See `LICENSE.md`. The ported code credits the Vivecraft source files it
 came from.
+
+## Donate
+
+[![Bitcoin](https://img.shields.io/badge/Bitcoin-donate-F7931A?logo=bitcoin&logoColor=white)](#donate)
+[![Solana](https://img.shields.io/badge/Solana-donate-9945FF?logo=solana&logoColor=white)](#donate)
+
+Bitcoin:
+
+```
+bc1q0csyzscm725lu4vwf5tsxwg5vr32pgjujtpnh8
+```
+
+Solana:
+
+```
+HMmUu1qFiWqfHiW5DMvUix5Ai9THvnC6VRwYLRM8zbbs
+```
