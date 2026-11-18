@@ -118,6 +118,37 @@ do {
 Check "the window's Install button installs ($message)" ($message -match 'is installed')
 Stop-Process $gui -ErrorAction SilentlyContinue
 
+# Repair: a broken install (game deleted, prepared files damaged) comes back whole.
+Remove-Item (Join-Path $dest 'horizon-client.exe')
+Set-Content (Join-Path $dest '.local\horizon-client\26.3\broken.txt') 'x'
+$r = Silent @('-Repair', '-InstallDir', $dest)
+Check 'repair restores a broken install' ($r.Code -eq 0 -and (Test-Path (Join-Path $dest 'horizon-client.exe')) -and
+    -not (Test-Path (Join-Path $dest '.local\horizon-client\26.3\broken.txt')) -and (Test-Path (Join-Path $dest '.local\horizon-client\26.3')))
+
+# Uninstall refuses a folder without Horizon VR in it.
+$r = Silent @('-Uninstall', '-InstallDir', $alone)
+Check 'uninstall refuses a folder without Horizon VR' ($r.Code -eq 1 -and (Test-Path (Join-Path $alone 'HorizonVR-Installer.ps1')))
+
+# Uninstall: the game, the prepared files and the shortcut go; the player's worlds and settings stay.
+New-Item -ItemType Directory -Force (Join-Path $dest 'saves\My World') | Out-Null
+Set-Content (Join-Path $dest 'saves\My World\level.dat') 'world'
+Set-Content (Join-Path $dest 'options.txt') 'fov:90'
+$r = Silent @('-Uninstall', '-InstallDir', $dest)
+# The game itself also writes settings here (config, horizon-graphics.txt): the player's too.
+$left = @(Get-ChildItem $dest -Force | ForEach-Object Name | Sort-Object)
+$shipped = 'horizon-client.exe', 'horizon-prepare.exe', 'openxr_loader.dll', 'research-lock.json', 'LICENSE.txt',
+    'Play Horizon VR.bat', 'exporters', 'mods', 'crates', '.local', '.horizon-cache'
+Check "uninstall keeps only the player's files ($($left -join ','))" ($r.Code -eq 0 -and
+    'options.txt' -in $left -and 'saves' -in $left -and -not ($left | Where-Object { $_ -in $shipped }))
+Check 'uninstall keeps the world' ((Get-Content (Join-Path $dest 'saves\My World\level.dat')) -eq 'world')
+Check 'uninstall removes the shortcut' (-not (Test-Path $shortcut))
+
+# Uninstall of a folder with nothing of the player's removes the folder too.
+$r = Silent @('-InstallDir', $dest)
+Get-ChildItem $dest -Force | Where-Object Name -in $left | Remove-Item -Recurse -Force
+$r = Silent @('-Uninstall', '-InstallDir', $dest)
+Check 'uninstall removes an empty install folder' ($r.Code -eq 0 -and -not (Test-Path $dest))
+
 if (-not $hadShortcut) { Remove-Item $shortcut -ErrorAction SilentlyContinue }
 Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 if ($failed) { Write-Host "$failed check(s) failed" -ForegroundColor Red; exit 1 }
