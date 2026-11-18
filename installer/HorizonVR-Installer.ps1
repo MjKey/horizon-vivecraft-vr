@@ -2,7 +2,7 @@
 # script to the chosen folder, prepares the game files from your own Minecraft 26.3, and adds a
 # desktop shortcut. It finds the Horizon launcher's (or the Minecraft Launcher's) Minecraft 26.3
 # and server jar by itself. `-Silent` installs with what it found, without the window.
-param([switch]$Silent, [string]$InstallDir)
+param([switch]$Silent, [string]$InstallDir, [string]$MinecraftDir, [string]$ServerJar)
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 $here = $PSScriptRoot
 $launcher = Join-Path $env:APPDATA 'horizon-launcher'
@@ -59,6 +59,11 @@ function Run($exe, $arguments, $dir, $say) {
 # The whole install. Throws with a message the player can act on.
 function Install($dest, $mc, $server, $say) {
     $ErrorActionPreference = 'Stop'
+    # Full paths without quotes (a command line can leave one after a trailing backslash) or a
+    # trailing backslash (it would escape the closing quote of the preparer's arguments).
+    $dest = [IO.Path]::GetFullPath($dest.Trim('" ')).TrimEnd('\')
+    $mc = [IO.Path]::GetFullPath($mc.Trim('" ')).TrimEnd('\')
+    $server = "$server".Trim('" ')
     if (-not (Test-Path (Join-Path $here 'files\horizon-client.exe'))) {
         throw 'The game files are missing. Unzip the whole HorizonVR-Installer.zip and run the installer from the unzipped folder.'
     }
@@ -68,11 +73,12 @@ function Install($dest, $mc, $server, $say) {
     if (-not $server -or -not (Is-ServerJar $server)) {
         throw 'Choose the Minecraft 26.3 server jar (download it from minecraft.net). Another version does not work.'
     }
-    # No trailing backslash: it would escape the closing quote of a program argument.
-    $dest = [IO.Path]::GetFullPath($dest).TrimEnd('\')
-    $mc = [IO.Path]::GetFullPath($mc).TrimEnd('\')
-    if ((Get-Process horizon-client -ErrorAction SilentlyContinue | Where-Object { $_.Path -and (Split-Path $_.Path) -eq $dest })) {
-        throw 'Horizon VR is running from that folder. Close it first.'
+    # A running game locks its exe; asking the file works for every spelling of the path (short
+    # 8.3 names, case), where comparing process paths doesn't.
+    $exe = Join-Path $dest 'horizon-client.exe'
+    if (Test-Path -LiteralPath $exe) {
+        try { [IO.File]::Open($exe, 'Open', 'ReadWrite', 'None').Close() }
+        catch { throw 'Horizon VR is running from that folder. Close it first.' }
     }
 
     & $say "Copying Horizon VR to $dest..."
@@ -118,9 +124,14 @@ function Install($dest, $mc, $server, $say) {
     & $say 'Done. Start SteamVR, then open "Horizon VR" on your desktop.'
 }
 
+# Dot-sourced (by the tests): only define the functions.
+if ($MyInvocation.InvocationName -eq '.') { return }
+
 if ($Silent) {
+    if (-not $MinecraftDir) { $MinecraftDir = Find-Minecraft }
+    if (-not $ServerJar) { $ServerJar = Find-ServerJar }
     try {
-        Install $InstallDir (Find-Minecraft) (Find-ServerJar) { param($t) Write-Host $t }
+        Install $InstallDir $MinecraftDir $ServerJar { param($t) Write-Host $t }
         exit 0
     } catch {
         Write-Host "Install failed: $_" -ForegroundColor Red
