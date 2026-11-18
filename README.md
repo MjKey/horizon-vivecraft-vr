@@ -1,0 +1,31 @@
+# Horizon Vivecraft VR
+
+A port of [VivecraftMod](https://github.com/Vivecraft/VivecraftMod) (LGPL-3.0) to the Horizon
+Minecraft client, using OpenXR. Only the VR code is here, not Horizon itself.
+
+## What's here
+
+- `crates/horizon-vr/`: the OpenXR runtime crate (headset, controllers, eye rendering).
+- `horizon-client-vr/vr/`: the game VR modules. They go in `crates/horizon-client/src/game/vr/`.
+- `horizon-hooks.patch`: the changes to Horizon's own files that hook the VR code in.
+- `VR_PORT_STATUS.md`: what is ported, how, and what is not.
+
+## Install
+
+1. Clone Horizon.
+2. Copy `crates/horizon-vr` into Horizon's `crates/`.
+3. Copy `horizon-client-vr/vr` to `crates/horizon-client/src/game/vr`.
+4. In the Horizon folder, run `git apply path/to/horizon-hooks.patch`.
+5. Build with `cargo build --profile fast -p horizon-game`.
+
+The patch was made against Horizon commit `c07bfa7`. A newer Horizon may need it fixed by hand.
+
+## Status
+
+Tested only partly in a headset. The Vivecraft server networking, other players' VR bodies and
+full-body (OSC) trackers have not been tested at all.
+
+## License
+
+LGPL-3.0, as Vivecraft. See `LICENSE.md`. The ported code credits the Vivecraft source files it
+came from.

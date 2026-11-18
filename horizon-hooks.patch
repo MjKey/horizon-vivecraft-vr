@@ -1,0 +1,1692 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 65a3b7f..01b6422 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -169,7 +169,7 @@ dependencies = [
+  "objc2-foundation 0.3.2",
+  "parking_lot",
+  "percent-encoding",
+- "windows-sys 0.59.0",
++ "windows-sys 0.61.2",
+  "wl-clipboard-rs",
+  "x11rb",
+ ]
+@@ -219,7 +219,7 @@ version = "0.38.0+1.3.281"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "0bb44936d800fea8f016d7f2311c6a4f97aebd5dc86f09906139ec848cf3a46f"
+ dependencies = [
+- "libloading",
++ "libloading 0.8.9",
+ ]
+ 
+ [[package]]
+@@ -1181,7 +1181,7 @@ version = "0.5.3"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "ab8ecd87370524b461f8557c119c405552c396ed91fc0a8eec68679eab26f94a"
+ dependencies = [
+- "libloading",
++ "libloading 0.8.9",
+ ]
+ 
+ [[package]]
+@@ -1256,7 +1256,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
+ dependencies = [
+  "libc",
+- "windows-sys 0.59.0",
++ "windows-sys 0.61.2",
+ ]
+ 
+ [[package]]
+@@ -1862,6 +1862,7 @@ dependencies = [
+  "horizon-telemetry",
+  "horizon-theme",
+  "horizon-threads",
++ "horizon-vr",
+  "horizon-world",
+  "log",
+  "miniz_oxide 0.8.9",
+@@ -2022,6 +2023,7 @@ dependencies = [
+  "horizon-system",
+  "horizon-theme",
+  "horizon-threads",
++ "horizon-vr",
+  "horizon-world",
+  "image-webp",
+  "log",
+@@ -2322,7 +2324,7 @@ dependencies = [
+  "horizon-mod-points",
+  "horizon-mod-render",
+  "horizon-mod-wasm",
+- "libloading",
++ "libloading 0.8.9",
+  "log",
+  "serde",
+  "serde_json",
+@@ -2515,7 +2517,7 @@ dependencies = [
+ name = "horizon-narrator"
+ version = "0.1.0"
+ dependencies = [
+- "libloading",
++ "libloading 0.8.9",
+  "log",
+  "objc2 0.6.5",
+  "objc2-app-kit 0.3.2",
+@@ -2825,6 +2827,18 @@ dependencies = [
+  "windows-sys 0.61.2",
+ ]
+ 
++[[package]]
++name = "horizon-vr"
++version = "0.1.0"
++dependencies = [
++ "ash",
++ "glam",
++ "log",
++ "openxr",
++ "png",
++ "wgpu",
++]
++
+ [[package]]
+ name = "horizon-world"
+ version = "0.1.0"
+@@ -3222,7 +3236,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "6aae1df220ece3c0ada96b8153459b67eebe9ae9212258bb0134ae60416fdf76"
+ dependencies = [
+  "libc",
+- "libloading",
++ "libloading 0.8.9",
+  "pkg-config",
+ ]
+ 
+@@ -3260,6 +3274,16 @@ dependencies = [
+  "windows-link",
+ ]
+ 
++[[package]]
++name = "libloading"
++version = "0.9.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "a1832accd5a4ca2795ace4d05d15c4039be15b62d3b950eff99746a990e3cc10"
++dependencies = [
++ "cfg-if",
++ "windows-link",
++]
++
+ [[package]]
+ name = "libm"
+ version = "0.2.16"
+@@ -4189,6 +4213,26 @@ dependencies = [
+  "libc",
+ ]
+ 
++[[package]]
++name = "openxr"
++version = "0.22.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "53770c8f7d3f185bcb577b78f2ed8e33bbf7cdf5cd57fb68b5ec0b4117b79de6"
++dependencies = [
++ "libc",
++ "libloading 0.9.1",
++ "openxr-sys",
++]
++
++[[package]]
++name = "openxr-sys"
++version = "0.14.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "febb5d50cee7b964b69d5b7a810ed9620fc64f41382ffefe05434754c7a48877"
++dependencies = [
++ "libc",
++]
++
+ [[package]]
+ name = "orbclient"
+ version = "0.3.55"
+@@ -4215,7 +4259,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
+ dependencies = [
+  "libc",
+- "windows-sys 0.45.0",
++ "windows-sys 0.61.2",
+ ]
+ 
+ [[package]]
+@@ -4750,7 +4794,7 @@ dependencies = [
+  "once_cell",
+  "socket2 0.6.5",
+  "tracing",
+- "windows-sys 0.59.0",
++ "windows-sys 0.61.2",
+ ]
+ 
+ [[package]]
+@@ -5076,7 +5120,7 @@ dependencies = [
+  "errno",
+  "libc",
+  "linux-raw-sys 0.12.1",
+- "windows-sys 0.59.0",
++ "windows-sys 0.61.2",
+ ]
+ 
+ [[package]]
+@@ -5630,7 +5674,7 @@ dependencies = [
+  "getrandom 0.4.3",
+  "once_cell",
+  "rustix 1.1.5",
+- "windows-sys 0.59.0",
++ "windows-sys 0.61.2",
+ ]
+ 
+ [[package]]
+@@ -6620,7 +6664,7 @@ dependencies = [
+  "js-sys",
+  "khronos-egl",
+  "libc",
+- "libloading",
++ "libloading 0.8.9",
+  "log",
+  "naga",
+  "naga-types",
+@@ -6708,7 +6752,7 @@ version = "0.1.11"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
+ dependencies = [
+- "windows-sys 0.59.0",
++ "windows-sys 0.61.2",
+ ]
+ 
+ [[package]]
+@@ -7174,7 +7218,7 @@ dependencies = [
+  "as-raw-xcb-connection",
+  "gethostname",
+  "libc",
+- "libloading",
++ "libloading 0.8.9",
+  "once_cell",
+  "rustix 1.1.5",
+  "x11rb-protocol",
+diff --git a/Cargo.toml b/Cargo.toml
+index 52c624a..68a37d4 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -2,6 +2,7 @@
+ exclude = ["crates/horizon-telemetry-server", "launcher", "crates/horizon-mod-registry", "third_party/wgpu-hal", "third_party/naga", "third_party/libmimalloc-sys", "tools/fixtures/paper-trace-mod"]
+ members = [
+     "crates/horizon-guest-stack",
++    "crates/horizon-vr",
+     "crates/horizon-mod-vocab",
+     "crates/horizon-game-discovery",
+     "crates/horizon-cosmetics",
+diff --git a/crates/horizon-client-render/Cargo.toml b/crates/horizon-client-render/Cargo.toml
+index a9121f7..420dc31 100644
+--- a/crates/horizon-client-render/Cargo.toml
++++ b/crates/horizon-client-render/Cargo.toml
+@@ -42,6 +42,8 @@ base64 = "0.22"
+ bytemuck = { version = "1.24", features = ["derive"] }
+ # Sound (ALSA on Linux); the `audio` feature.
+ cpal = { version = "0.16", optional = true }
++# VR through OpenXR: the `vr` feature.
++horizon-vr = { path = "../horizon-vr", optional = true }
+ chrono = { version = "0.4.42", default-features = false, features = ["clock", "std"] }
+ flate2 = { version = "1.1.10", default-features = false, features = ["zlib-rs", "runtime_detection"] }
+ glam = "0.30"
+@@ -79,6 +81,8 @@ wgpu = { version = "30.0.1", default-features = false, features = ["gles"] }
+ [features]
+ # Sound output: horizon-client's `audio` feature.
+ audio = ["dep:cpal"]
++# VR through OpenXR (HORIZON_VR=1 at launch).
++vr = ["dep:horizon-vr"]
+ # Helpers horizon-client's tests build their fixtures with.
+ test-support = []
+ # The `scene_replay` example's allocator counts allocations (horizon-threads' `alloc-count`).
+diff --git a/crates/horizon-client-render/src/gfx.rs b/crates/horizon-client-render/src/gfx.rs
+index f2d3b3a..b7ea123 100644
+--- a/crates/horizon-client-render/src/gfx.rs
++++ b/crates/horizon-client-render/src/gfx.rs
+@@ -1443,6 +1443,8 @@ pub struct Renderer {
+     screen_pipelines: [wgpu::RenderPipeline; 8],
+     screen_buffer: wgpu::Buffer,
+     screen_capacity: u64,
++    /// VR: the screen effects drawn here instead of the window (alpha, vignette), laid over each eye.
++    vr_screen: Option<[wgpu::Texture; 2]>,
+     entity_group: wgpu::BindGroup,
+     /// The layout of `entity_group`, for the native shadow pass.
+     entity_bindings: wgpu::BindGroupLayout,
+@@ -2558,6 +2560,12 @@ async fn open_backend(
+     };
+     let dxc_found = dxc.is_some();
+     let (instance, surface, adapter) = dxc.unwrap_or((instance, surface, adapter));
++    // VR: the GPU the headset runtime drives the headset with.
++    #[cfg(feature = "vr")]
++    let adapter = match adapter.get_info().backend {
++        wgpu::Backend::Vulkan => horizon_vr::pick_adapter(&instance, &adapter).unwrap_or(adapter),
++        _ => adapter,
++    };
+     if adapter.get_info().backend == wgpu::Backend::Dx12 {
+         crate::crash::set_detail(
+             "DirectX 12 shader compiler",
+@@ -4914,6 +4922,7 @@ impl Renderer {
+             screen_pipelines,
+             screen_buffer,
+             screen_capacity,
++            vr_screen: None,
+             entity_group,
+             entity_bindings,
+             prepared_models: None,
+@@ -7240,7 +7249,7 @@ impl Renderer {
+     ) -> JoinedFrusta {
+         let views = ViewSet::single(self.screen_view(fov_degrees, yaw, pitch, depth_far));
+         let planes = frustum(views.cull().view_proj(bob));
+-        self.ask_world_views(camera, depth_far, Frustum { planes })
++        self.ask_world_views(camera, yaw, depth_far, Frustum { planes })
+     }
+     /// A conservative view for geometry built before TAA chooses this frame's
+     /// jitter. Cover a whole rendered pixel on each side, at the configured
+@@ -11134,7 +11143,11 @@ impl Renderer {
+             );
+         }
+         if !frame.title {
+-            self.draw_world_views(&mut encoder, frame, globals, flat_frame, entity_quads);
++            let particles = (
++                translucent_particle_quads,
++                base_quads - translucent_item_quads - translucent_particle_quads,
++            );
++            self.draw_world_views(&mut encoder, frame, globals, flat_frame, entity_quads, particles, cloud_quads);
+             let (depth, depth_size) = match &scaled {
+                 Some((_, depth)) => (depth, self.world_post.size().unwrap_or(size)),
+                 None => (&self.depth, size),
+@@ -11165,6 +11178,10 @@ impl Renderer {
+                     filtered: &self.sprite_sampler,
+                 },
+             });
++        } else {
++            // VR on the title screen: the panorama around the headset (Vivecraft's menu world).
++            #[cfg(feature = "vr")]
++            self.draw_title_views(&mut encoder, frame);
+         }
+         // A 0.2 pack in SDR: its picture finishes on 8 bits before the hand, the camera overlays
+         // and the HUD draw over it (`overlay_format`).
+@@ -11202,6 +11219,24 @@ impl Renderer {
+             hand_drawn: !pack_draws_hand,
+             hand_view_proj,
+         };
++        // VR: the headset has its own eye views; the window's picture is only the HUD, cleared
++        // to see-through so the wrist panel shows just the HUD.
++        #[cfg(feature = "vr")]
++        if !frame.title && horizon_vr::panel_clear_wanted() {
++            encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
++                label: Some("Horizon VR HUD clear"),
++                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
++                    view: &view_target,
++                    depth_slice: None,
++                    resolve_target: None,
++                    ops: wgpu::Operations {
++                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
++                        store: wgpu::StoreOp::Store,
++                    },
++                })],
++                ..Default::default()
++            });
++        }
+         let readback =
+             self.draw_overlay(&mut encoder, frame, &view_target, &target_texture, &overlay);
+         if culling && let Some(cull) = &mut self.cull {
+@@ -11244,6 +11279,8 @@ impl Renderer {
+             .or(self.offscreen.as_ref())
+         {
+             self.readback.present(&self.device, &mut encoder, image);
++            #[cfg(feature = "vr")]
++            horizon_vr::mirror(&self.device, &self.queue, &mut encoder, image);
+         }
+         // With frame generation on a window, its real frame.
+         let shown = surface_frame.as_ref().map(|f| &f.texture);
+@@ -11562,7 +11599,60 @@ impl Renderer {
+         {
+             hdr.tonemap(encoder, timing.as_mut());
+         }
+-        if !frame.screen.is_empty() {
++        // VR: the window shows the wrist HUD and menu, so the screen effects go over the eyes,
++        // drawn at the eyes' size: alpha-blended ones on clear, vignette-blended ones on white.
++        let vr_eyes = horizon_vr::poses().is_some() && !horizon_vr::screen_mode();
++        if vr_eyes && overlay.real && !frame.screen.is_empty()
++            && let Some((size, _)) = horizon_vr::eye_screen()
++        {
++            let size = wgpu::Extent3d { width: size[0], height: size[1], depth_or_array_layers: 1 };
++            let format = self.output.frame.overlay_format;
++            if self.vr_screen.as_ref().is_none_or(|t| t[0].size() != size || t[0].format() != format) {
++                self.vr_screen = Some(std::array::from_fn(|_| {
++                    self.device.create_texture(&wgpu::TextureDescriptor {
++                        label: Some("VR screen effects"),
++                        size,
++                        mip_level_count: 1,
++                        sample_count: 1,
++                        dimension: wgpu::TextureDimension::D2,
++                        format,
++                        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
++                            | wgpu::TextureUsages::TEXTURE_BINDING,
++                        view_formats: &[],
++                    })
++                }));
++            }
++            let targets = self.vr_screen.as_ref().expect("made above");
++            for (k, clear) in [wgpu::Color::TRANSPARENT, wgpu::Color::WHITE].into_iter().enumerate() {
++                let view = targets[k].create_view(&Default::default());
++                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
++                    label: Some("VR screen effects"),
++                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
++                        view: &view,
++                        resolve_target: None,
++                        depth_slice: None,
++                        ops: wgpu::Operations { load: wgpu::LoadOp::Clear(clear), store: wgpu::StoreOp::Store },
++                    })],
++                    ..Default::default()
++                });
++                pass.set_bind_group(0, &self.entity_group, &[]);
++                pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
++                pass.set_vertex_buffer(0, self.screen_buffer.slice(..));
++                for (i, quad) in frame.screen.iter().enumerate() {
++                    let blend = match quad.blend {
++                        crate::screen_effects::Blend::Alpha => 0,
++                        crate::screen_effects::Blend::Vignette => 4,
++                    };
++                    if (blend == 4) != (k == 1) {
++                        continue;
++                    }
++                    pass.set_pipeline(&self.screen_pipelines[blend + (quad.sampling & 3) as usize]);
++                    pass.draw_indexed(0..6, (i * 4) as i32, 0..1);
++                }
++            }
++            horizon_vr::overlay_eyes(&self.device, &self.queue, encoder, &targets[0], &targets[1]);
++        }
++        if !frame.screen.is_empty() && !vr_eyes {
+             let attachments = [Some(wgpu::RenderPassColorAttachment {
+                 view: view_target,
+                 resolve_target: None,
+diff --git a/crates/horizon-client-render/src/gfx/panorama.rs b/crates/horizon-client-render/src/gfx/panorama.rs
+index 378a34d..01bce37 100644
+--- a/crates/horizon-client-render/src/gfx/panorama.rs
++++ b/crates/horizon-client-render/src/gfx/panorama.rs
+@@ -167,6 +167,17 @@ fn projection(width: u32, height: u32, yaw: f32, pitch: f32) -> Mat4 {
+         * Mat4::from_rotation_y(yaw.to_radians())
+ }
+ 
++/// A headset eye's panorama projection: `projection`'s, from the eye's own field of view, shape
++/// and turn (Horizon degrees).
++// shortcut: the roll's sign follows `projection`'s flipped frame by eye; check it in the headset.
++pub(super) fn eye_projection(fov_degrees: f32, aspect: f32, yaw: f32, pitch: f32, roll: f32) -> Mat4 {
++    Mat4::perspective_rh(fov_degrees.to_radians(), aspect, 0.05, 10.0)
++        * Mat4::from_rotation_z(roll.to_radians())
++        * Mat4::from_rotation_x(std::f32::consts::PI)
++        * Mat4::from_rotation_x(pitch.to_radians())
++        * Mat4::from_rotation_y(yaw.to_radians())
++}
++
+ pub(super) struct Panorama {
+     pipeline: wgpu::RenderPipeline,
+     layout: wgpu::BindGroupLayout,
+@@ -356,6 +367,11 @@ impl Panorama {
+         })
+     }
+ 
++    /// This view's projection, in the encoder's order (a headset eye's, `eye_projection`).
++    pub(super) fn upload(&self, uploads: &mut super::upload::Uploads, encoder: &mut wgpu::CommandEncoder, m: Mat4) {
++        uploads.buffer(encoder, &self.uniform, 0, bytemuck::cast_slice(&m.to_cols_array()));
++    }
++
+     /// Draw the cube `prepare` made for this frame.
+     pub(super) fn draw(&self, pass: &mut wgpu::RenderPass<'_>) {
+         let Some(cube) = &self.cube else {
+diff --git a/crates/horizon-client-render/src/gfx/surface_setup.rs b/crates/horizon-client-render/src/gfx/surface_setup.rs
+index 6bd3cf2..d6f928c 100644
+--- a/crates/horizon-client-render/src/gfx/surface_setup.rs
++++ b/crates/horizon-client-render/src/gfx/surface_setup.rs
+@@ -192,6 +192,10 @@ pub(super) async fn open_adapter(
+     };
+     #[cfg(not(target_os = "macos"))]
+     let opened = match info.backend {
++        #[cfg(feature = "vr")]
++        wgpu::Backend::Vulkan => horizon_vr::open_device(adapter, &desc)
++            .or_else(|| horizon_hdr::open_vulkan_device(adapter, &desc)),
++        #[cfg(not(feature = "vr"))]
+         wgpu::Backend::Vulkan => horizon_hdr::open_vulkan_device(adapter, &desc),
+         _ => None,
+     };
+diff --git a/crates/horizon-client-render/src/gfx/view_sections.rs b/crates/horizon-client-render/src/gfx/view_sections.rs
+index 3968b93..b41742e 100644
+--- a/crates/horizon-client-render/src/gfx/view_sections.rs
++++ b/crates/horizon-client-render/src/gfx/view_sections.rs
+@@ -158,12 +158,40 @@ impl Renderer {
+     pub(super) fn ask_world_views(
+         &mut self,
+         camera: DVec3,
++        yaw: f32,
+         far: f32,
+         frustum: Frustum,
+     ) -> JoinedFrusta {
+         let max_side = self.world_view_side;
++        #[cfg(feature = "vr")]
++        let eyes = horizon_vr::eyes(&self.device, &self.queue, camera.to_array(), yaw);
++        #[cfg(not(feature = "vr"))]
++        let _ = yaw;
+         let sections = &mut self.world_views.sections;
+         sections.ask(max_side);
++        // VR: the headset's eyes, two more views (`horizon_vr::eye_drawn` keeps their pictures).
++        // The spyglass's lens first, so the eyes take this frame's picture of it.
++        #[cfg(feature = "vr")]
++        let lens = eyes
++            .map(|_| [(horizon_vr::lens(), horizon_vr::LENS_ID), (horizon_vr::camera(), horizon_vr::CAMERA_ID)])
++            .into_iter()
++            .flatten()
++            .filter_map(|(v, id)| v.map(|v| (v, id)));
++        #[cfg(feature = "vr")]
++        for (eye, id) in lens.into_iter().chain(eyes.into_iter().flatten().zip(horizon_vr::EYE_IDS)) {
++            let view = crate::render_views::WorldView::new(
++                id,
++                DVec3::from_array(eye.camera),
++                eye.yaw,
++                eye.pitch,
++                eye.fov_degrees,
++                eye.size,
++            )
++            .with_roll(eye.roll);
++            if let Err(e) = sections.views.push(view) {
++                log::warn!("Horizon VR: eye view refused: {:?}", e.reason);
++            }
++        }
+         sections.asked = true;
+         let views = sections.views.views().iter().map(|v| Frustum {
+             planes: super::frustum(ViewCamera::new(v, camera, far).view_proj),
+@@ -189,11 +217,16 @@ impl Renderer {
+         radius: i32,
+     ) {
+         let sections = &mut self.world_views.sections;
+-        if frame.title && sections.asked {
++        // VR keeps its eyes on the title screen (`draw_title_views` draws the panorama there).
++        #[cfg(feature = "vr")]
++        let keep = horizon_vr::poses().is_some();
++        #[cfg(not(feature = "vr"))]
++        let keep = false;
++        if frame.title && sections.asked && !keep {
+             sections
+                 .views
+                 .refuse_all(WorldViewRefusalReason::TitleScreen);
+-        } else if frame.title {
++        } else if frame.title && !(keep && sections.asked) {
+             sections.views.begin(self.world_view_side);
+         } else if !sections.asked {
+             sections.ask(self.world_view_side);
+diff --git a/crates/horizon-client-render/src/gfx/world_views.rs b/crates/horizon-client-render/src/gfx/world_views.rs
+index 1159fa5..0153775 100644
+--- a/crates/horizon-client-render/src/gfx/world_views.rs
++++ b/crates/horizon-client-render/src/gfx/world_views.rs
+@@ -156,6 +156,13 @@ struct Lists {
+     pub flat: bool,
+     pub hdr: bool,
+     pub entity_quads: u32,
++    /// The translucent particles: how many quads, and the first, in the entity buffer.
++    pub particles: (u32, u32),
++    /// The sun and moon's indices in the celestial buffer (empty: none drawn).
++    pub celestial: std::ops::Range<u32>,
++    /// The native clouds' quads (0: none), and whether the native weather draws.
++    pub clouds: u32,
++    pub weather: bool,
+ }
+ 
+ impl Renderer {
+@@ -170,6 +177,8 @@ impl Renderer {
+         globals: Globals,
+         flat: bool,
+         entity_quads: u32,
++        particles: (u32, u32),
++        clouds: u32,
+     ) {
+         let views = self.world_views.sections.take_views();
+         let [r, g, b, _] = globals.fog_color.map(f64::from);
+@@ -185,6 +194,17 @@ impl Renderer {
+             flat,
+             hdr: self.hdr.is_some(),
+             entity_quads,
++            particles,
++            // The sun's quad comes first; a native pack drawing its own sun skips it. The sun
++            // without HDR's lifted two-pass disc.
++            celestial: if frame.title || frame.end_sky || !super::sky_visible(frame) {
++                0..0
++            } else {
++                let own_sun = self.native.as_ref().is_some_and(super::native_pack::NativePack::hides_sun);
++                (if own_sun { 6 } else { 0 })..(frame.celestial.len().min(2048 * 4) as u32 / 4) * 6
++            },
++            clouds: if self.native.as_ref().is_none_or(|n| n.vanilla_clouds) { clouds } else { 0 },
++            weather: true,
+         };
+         let format = self.output.frame.format;
+         let mut targets = std::mem::take(&mut self.world_views.targets);
+@@ -217,6 +237,18 @@ impl Renderer {
+             };
+             self.uploads
+                 .buffer(encoder, &self.globals, 0, bytemuck::bytes_of(&globals));
++            if !frame.title
++                && super::sky_visible(frame)
++                && let Some((rotation, brightness)) = frame.stars
++            {
++                self.stars
++                    .prepare(&mut self.uploads, encoder, camera.view_proj * rotation, brightness, &globals);
++            }
++            // OptiFine custom sky layers turned with this view.
++            if !frame.title && self.custom_sky.is_drawing() {
++                self.custom_sky
++                    .prepare(&mut self.uploads, encoder, camera.view_proj, &self.custom_sky_draws, &globals);
++            }
+             self.draw_world_view(encoder, target, frame, lists, k, view);
+             native_render::world_view_drawn(&mut native_render::WorldViewDrawn {
+                 id: view.id,
+@@ -233,6 +265,16 @@ impl Renderer {
+                 view_proj: camera.own_view_proj,
+                 camera: view.camera,
+             });
++            #[cfg(feature = "vr")]
++            horizon_vr::eye_drawn(
++                view.id,
++                &self.device,
++                &self.queue,
++                encoder,
++                &target.color,
++                &target.depth,
++                camera.own_view_proj,
++            );
+         }
+         if !views.views().is_empty() {
+             self.uploads.buffer(
+@@ -283,9 +325,48 @@ impl Renderer {
+             ..Default::default()
+         });
+         pass.set_bind_group(0, &self.group, &[]);
+-        if lists.sky {
+-            pass.set_pipeline(&self.sky);
+-            pass.draw(0..3, 0..1);
++        // The sky as the world pass draws it: a native pack's own sky, else the native one; the
++        // custom sky layers, the End's sky box, the sun and moon, the stars, the dark disc.
++        // shortcut: a `shaders/` pack's sky and a resource pack's core/sky need the window's pack
++        // passes and globals; the eyes draw the native sky under them.
++        if lists.sky && !frame.title {
++            let native_sky = frame.skybox && self.native.as_ref().is_some_and(|n| n.draw_sky(&mut pass));
++            pass.set_bind_group(0, &self.group, &[]);
++            if frame.skybox && !native_sky {
++                pass.set_pipeline(&self.sky);
++                pass.draw(0..3, 0..1);
++                if self.custom_sky.is_drawing() {
++                    self.custom_sky.draw(&mut pass);
++                    pass.set_bind_group(0, &self.group, &[]);
++                }
++            }
++            if !lists.celestial.is_empty() || frame.end_sky {
++                pass.set_pipeline(&self.celestial.added);
++                pass.set_bind_group(0, &self.entity_group, &[]);
++                pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
++                if frame.end_sky {
++                    self.end_sky.draw(&mut pass);
++                    if self.custom_sky.is_drawing() && self.native.is_none() {
++                        self.custom_sky.draw(&mut pass);
++                        pass.set_pipeline(&self.celestial.added);
++                        pass.set_bind_group(0, &self.entity_group, &[]);
++                    }
++                }
++                if !lists.celestial.is_empty() {
++                    pass.set_vertex_buffer(0, self.celestial_buffer.slice(..));
++                    self.celestial.draw_bodies(&mut pass, false, lists.celestial.clone());
++                }
++                pass.set_bind_group(0, &self.group, &[]);
++            }
++            let own_stars = self.native.as_ref().is_some_and(super::native_pack::NativePack::hides_stars);
++            if frame.stars.is_some() && !own_stars {
++                self.stars.draw(&mut pass);
++                pass.set_bind_group(0, &self.group, &[]);
++            }
++            if frame.dark_disc {
++                pass.set_pipeline(&self.dark_disc);
++                pass.draw(0..3, 0..1);
++            }
+         }
+         let flat = self.flat.as_ref().filter(|_| lists.flat);
+         let flipped = view
+@@ -354,6 +435,105 @@ impl Renderer {
+                 self.draw_sections(&mut pass, &self.indirect, 0, translucent, end - translucent);
+             }
+         }
++        // The translucent particles after the translucent terrain, as the world pass draws them.
++        let (count, first) = lists.particles;
++        if count > 0 {
++            pass.set_pipeline(&self.entity_pipeline);
++            pass.set_bind_group(0, &self.entity_group, &[]);
++            pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
++            pass.set_vertex_buffer(0, self.entity_buffer.slice(..));
++            pass.draw_indexed(0..count * 6, (first * 4) as i32, 0..1);
++        }
++        // Then the clouds and the rain and snow, as `executeClassicTransparency` does.
++        if lists.clouds > 0 {
++            pass.set_pipeline(&self.cloud_pipeline);
++            pass.set_bind_group(0, &self.entity_group, &[]);
++            pass.set_bind_group(1, &self.cloud_group, &[]);
++            pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
++            pass.set_vertex_buffer(0, self.cloud_buffer.slice(..));
++            pass.draw_indexed(0..lists.clouds * 6, 0, 0..1);
++        }
++        if lists.weather {
++            pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
++            // A native pack's own rain and snow, as the world pass.
++            if !self
++                .native
++                .as_ref()
++                .filter(|_| !frame.title)
++                .is_some_and(|n| n.draw_weather(&mut pass, &self.weather, &self.entity_group))
++            {
++                self.weather.draw(&mut pass, &self.entity_group);
++            }
++        }
++    }
++}
++
++#[cfg(feature = "vr")]
++impl Renderer {
++    /// The title screen in the headset: each eye sees the title panorama around it, still
++    /// (the panorama's own turn taken out), as Vivecraft shows its menu world.
++    pub(super) fn draw_title_views(&mut self, encoder: &mut wgpu::CommandEncoder, frame: &Frame) {
++        let views = self.world_views.sections.take_views();
++        let format = self.output.frame.format;
++        let mut targets = std::mem::take(&mut self.world_views.targets);
++        targets.retain(|id, _| views.views().iter().any(|v| v.id == *id));
++        for view in views.views() {
++            if !horizon_vr::EYE_IDS.contains(&view.id) {
++                continue;
++            }
++            let target = targets
++                .entry(view.id)
++                .and_modify(|t| {
++                    if t.size != view.size || t.format != format {
++                        *t = Target::new(&self.device, view.size, format);
++                    }
++                })
++                .or_insert_with(|| Target::new(&self.device, view.size, format));
++            let aspect = view.size[0] as f32 / view.size[1].max(1) as f32;
++            let m = super::panorama::eye_projection(
++                view.fov_degrees,
++                aspect,
++                view.yaw - frame.yaw,
++                view.pitch,
++                view.roll,
++            );
++            self.panorama.upload(&mut self.uploads, encoder, m);
++            {
++                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
++                    label: Some("Horizon VR title eye"),
++                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
++                        view: &target.color_view,
++                        resolve_target: None,
++                        depth_slice: None,
++                        ops: wgpu::Operations {
++                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
++                            store: wgpu::StoreOp::Store,
++                        },
++                    })],
++                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
++                        view: &target.depth,
++                        depth_ops: Some(wgpu::Operations {
++                            load: wgpu::LoadOp::Clear(0.0),
++                            store: wgpu::StoreOp::Store,
++                        }),
++                        stencil_ops: None,
++                    }),
++                    ..Default::default()
++                });
++                self.panorama.draw(&mut pass);
++            }
++            horizon_vr::eye_drawn(
++                view.id,
++                &self.device,
++                &self.queue,
++                encoder,
++                &target.color,
++                &target.depth,
++                Mat4::IDENTITY,
++            );
++        }
++        self.world_views.targets = targets;
++        self.world_views.sections.put_back(views);
+     }
+ }
+ 
+diff --git a/crates/horizon-client-render/src/ui.rs b/crates/horizon-client-render/src/ui.rs
+index 2cb4810..16c29a6 100644
+--- a/crates/horizon-client-render/src/ui.rs
++++ b/crates/horizon-client-render/src/ui.rs
+@@ -828,6 +828,12 @@ pub fn menu_background(
+     h: f32,
+     in_world: bool,
+ ) {
++    // VR: a menu over the world floats in the headset's world (Vivecraft's GUI panel); only the
++    // menu shows on its panel.
++    #[cfg(feature = "vr")]
++    if in_world && horizon_vr::panel_clear_wanted() {
++        return;
++    }
+     let sprite = if in_world {
+         "gui/inworld_menu_background"
+     } else {
+diff --git a/crates/horizon-client/Cargo.toml b/crates/horizon-client/Cargo.toml
+index 7b7a557..55ea8d7 100644
+--- a/crates/horizon-client/Cargo.toml
++++ b/crates/horizon-client/Cargo.toml
+@@ -27,7 +27,8 @@ horizon-client-lib = { path = "../horizon-client-lib", default-features = false
+ horizon-assets = { path = "../horizon-assets" }
+ horizon-client-core = { path = "../horizon-client-core" }
+ horizon-client-input = { path = "../horizon-client-input" }
+-horizon-client-render = { path = "../horizon-client-render" }
++horizon-client-render = { path = "../horizon-client-render", features = ["vr"] }
++horizon-vr = { path = "../horizon-vr" }
+ horizon-command = { path = "../horizon-command" }
+ horizon-items = { path = "../horizon-items" }
+ horizon-core = { path = "../horizon-core" }
+diff --git a/crates/horizon-client/src/game.rs b/crates/horizon-client/src/game.rs
+index 55bd735..8a45c3e 100644
+--- a/crates/horizon-client/src/game.rs
++++ b/crates/horizon-client/src/game.rs
+@@ -2339,6 +2339,10 @@ impl Game<'_> {
+             let eye = [x, y + f64::from(e.eye_height), z];
+             return Some((eye, pick_view_vector(e.y_rot, e.x_rot)));
+         }
++        // VR: the main controller's ray (Vivecraft's controller aim).
++        if let Some(aim) = self.vr_aim() {
++            return Some(aim);
++        }
+         Some((self.eye_position()?, pick_view_vector(self.yaw, self.pitch)))
+     }
+     /// `Player.blockInteractionRange`: the block pick's and mining's reach.
+@@ -4941,7 +4945,9 @@ impl Game<'_> {
+             self.native_render_gui_pre(&mut gui_canceled);
+         }
+         // RenderGuiEvent.Pre: a mod's cancel hides the HUD as F1 does.
+-        let show_hud = !self.ui.hide_gui && !gui_canceled && !self.replay.playing();
++        // VR: a menu's panel shows the menu alone (the HUD has its own wrist panel).
++        let vr_menu = horizon_vr::gui_open() && horizon_vr::panel_clear_wanted();
++        let show_hud = !self.ui.hide_gui && !gui_canceled && !self.replay.playing() && !vr_menu;
+         // Hud.extractRenderState asks `Screen.isInGameUi` twice: such a screen
+         // defers the subtitles over itself, and keeps them while F1 hides the
+         // rest of the HUD.
+@@ -4972,6 +4978,8 @@ impl Game<'_> {
+                 && (!spectator || self.spectator_crosshair())
+                 && !self.debug_crosshair()
+                 && !self.overlay_holds_view()
++                // VR: the HUD is on the wrist; the aim is the controller's laser, not a crosshair.
++                && !horizon_vr::hud_wanted()
+             {
+                 let attack = (indicator == 1).then_some(strength);
+                 let full = attack.is_some_and(|a| {
+@@ -8684,11 +8692,31 @@ impl Game<'_> {
+         };
+         self.custom_sky_frame([camera.x, camera.y, camera.z], &sky, (rain, thunder), title);
+         pr.lap("pr_celestial");
+-        let (mut hand, hand_items) = if title || self.scoping() {
++        let (mut hand, mut hand_items) = if title || self.scoping() {
+             Default::default()
+         } else {
+             self.hand_geometry(camera_alpha)
+         };
++        // VR: the hands are at the controllers, in the world: drawn with the entities, so every
++        // eye's view has them (their geometry is around the eyes; the frame's camera may differ).
++        if self.vr_running()
++            && let Some(eye) = self.eye_position()
++        {
++            let d = [
++                (eye[0] - camera.x) as f32,
++                (eye[1] - camera.y) as f32,
++                (eye[2] - camera.z) as f32,
++            ];
++            entities.extend(hand.drain(..).map(|mut v| {
++                v.pos = [v.pos[0] + d[0], v.pos[1] + d[1], v.pos[2] + d[2]];
++                v
++            }));
++            hand_items.clear();
++            self.vr_teleport_arc_geometry([camera.x, camera.y, camera.z], &mut entities);
++            self.vr_radial_geometry([camera.x, camera.y, camera.z], &mut entities);
++            self.vr_crosshair_geometry([camera.x, camera.y, camera.z], &mut entities);
++            self.vr_debug_geometry([camera.x, camera.y, camera.z], &mut entities);
++        }
+         // GameRenderer.render3dHud: the screen effects after the hand, in
+         // its pass (the hand pass draws with `bob * view`).
+         if !title {
+@@ -8706,8 +8734,13 @@ impl Game<'_> {
+                 .as_mut()
+                 .and_then(|p| p.attribute("minecraft:scale").ok())
+                 .unwrap_or(1.0) as f32;
++            // VR: the screen effects go over the eyes, so they are laid out for an eye.
++            let (size, fov) = horizon_vr::poses()
++                .filter(|_| !horizon_vr::screen_mode())
++                .and_then(|_| horizon_vr::eye_screen())
++                .unwrap_or((size, hud_fov));
+             let hand_projection = horizon_client::camera::hand_projection(
+-                hud_fov,
++                fov,
+                 size[0] as f32,
+                 size[1].max(1) as f32,
+                 depth_far,
+diff --git a/crates/horizon-client/src/game/entities/boats/mod.rs b/crates/horizon-client/src/game/entities/boats/mod.rs
+index 7feceb9..334fb8f 100644
+--- a/crates/horizon-client/src/game/entities/boats/mod.rs
++++ b/crates/horizon-client/src/game/entities/boats/mod.rs
+@@ -867,6 +867,7 @@ impl Game<'_> {
+             }
+         }
+         // controlBoat
++        let vr_on = self.vr_running();
+         if controlled {
+             let [left, right, up, down] = b.input;
+             let mut acceleration = 0.0f32;
+@@ -886,6 +887,13 @@ impl Game<'_> {
+             if down {
+                 acceleration -= 0.005;
+             }
++            // Standing VR: Vivecraft's stick turning, tank controls and roomscale rowing.
++            let mut paddle_input = b.input;
++            if vr_on {
++                (acceleration, paddle_input) =
++                    super::vr_vehicle::vr_control_boat(b.input, b.yaw, &mut b.delta_rotation, acceleration);
++            }
++            let [left, right, up, _] = paddle_input;
+             let r = b.yaw.to_radians();
+             b.velocity.x += f64::from((-r).sin() * acceleration);
+             b.velocity.z += f64::from(r.cos() * acceleration);
+diff --git a/crates/horizon-client/src/game/interface/frame_geometry.rs b/crates/horizon-client/src/game/interface/frame_geometry.rs
+index bcb5237..f0cff83 100644
+--- a/crates/horizon-client/src/game/interface/frame_geometry.rs
++++ b/crates/horizon-client/src/game/interface/frame_geometry.rs
+@@ -244,6 +244,8 @@ impl Game<'_> {
+             .is_some_and(|p| p.auto_spin_attack_ticks > 0);
+         let items = self.visible_hand_items();
+         let off_hand_empty = items[1].is_none();
++        // VR: each hand at its controller (Vivecraft's `renderVRHand_Main`/`_Offhand`).
++        let vr_hands = self.vr_hands();
+         // Combat feel Legacy: a sword is held up while use is held, as 1.8.9's block looked.
+         // Only the picture changes: the clicks and what they send stay 26.3's.
+         let legacy_block = self.pvp_legacy_look()
+@@ -260,7 +262,7 @@ impl Game<'_> {
+                 Some(Hand::Main) => false,
+             };
+         for (i, (hand, item)) in Hand::BOTH.into_iter().zip(items).enumerate() {
+-            if !shown[i] {
++            if !shown[i] && vr_hands.is_none() {
+                 continue;
+             }
+             let scale = item.as_ref().map_or(1.0, |stack| {
+@@ -317,6 +319,40 @@ impl Game<'_> {
+             if hand == Hand::Off && legacy_block {
+                 continue;
+             }
++            // VR: the arm along the controller, the item in its hand (Vivecraft's
++            // `vrRenderArmWithItem`); the roomscale bow hides the arm holding it.
++            let mut vr_item = None;
++            if let Some(hands) = vr_hands {
++                let Some(vh) = hands[if hand == Hand::Main { 0 } else { 1 }] else {
++                    continue;
++                };
++                let main_hand = hand == Hand::Main;
++                let kind = item
++                    .as_ref()
++                    .map(|s| self.vr_item_transform_kind(&s.item, main_hand));
++                let bow = matches!(
++                    kind,
++                    Some(super::vr_render::ItemTransform::Bow | super::vr_render::ItemTransform::BowDrawing)
++                );
++                if !self.own_invisible() && !bow {
++                    let slim = self.player_model.as_ref().is_some_and(|m| m.slim);
++                    runs.push((out.len() as u32, 0));
++                    self.first_person_arm(
++                        left,
++                        vh.to_world * super::vr_render::arm_transform(!left, slim),
++                        packed,
++                        a,
++                        &mut out,
++                    );
++                }
++                if item.is_none() {
++                    continue;
++                }
++                let use_ticks = self.using.map_or(0.0, |(_, t)| t as f32);
++                vr_item = kind.map(|k| {
++                    vh.to_world * super::vr_render::item_transform(k, main_hand, vh.gun_angle, use_ticks)
++                });
++            }
+             let Some(stack) = item else {
+                 // renderArmWithItem: only the main hand's empty arm shows,
+                 // on the main arm (the left one with the main hand set to
+@@ -332,7 +368,7 @@ impl Game<'_> {
+                 continue;
+             };
+             let item_id = self.rendered_item_id(&stack.item);
+-            if let Some(id) = maps::map_id(&stack) {
++            if let Some(id) = maps::map_id(&stack).filter(|_| vr_item.is_none()) {
+                 use horizon_client::first_person::{MapHold, map_arm_poses, one_handed_map_pose};
+                 let hold = MapHold::of(hand, off_hand_empty);
+                 // renderOneHandedMap and renderTwoHandedMap: the arms under
+@@ -425,8 +461,13 @@ impl Game<'_> {
+                 }
+                 _ => ItemPose::Swing,
+             };
+-            let mut m = to_world
+-                * horizon_client::first_person::item_pose(left, inverse_height, attack, pose);
++            let mut m = match vr_item {
++                Some(m) => m,
++                None => {
++                    to_world
++                        * horizon_client::first_person::item_pose(left, inverse_height, attack, pose)
++                }
++            };
+             // PvP & HUD's shield size (100% is vanilla's), toward the hand holding it.
+             let shield_size = self.pvp_shield_size();
+             if shield_size != 100 && &*stack.item == "minecraft:shield" {
+diff --git a/crates/horizon-client/src/game/interface/pad/mod.rs b/crates/horizon-client/src/game/interface/pad/mod.rs
+index 026382e..b243c01 100644
+--- a/crates/horizon-client/src/game/interface/pad/mod.rs
++++ b/crates/horizon-client/src/game/interface/pad/mod.rs
+@@ -376,7 +376,11 @@ impl Game<'_> {
+ 
+     /// Once per loop iteration: read the pads and act on button changes.
+     pub(super) fn poll_pads(&mut self, event_loop: &dyn EventLoopCtl) {
+-        self.pad.virtual_input = self.pad.injected != PadState::default();
++        // VR: menus on the floating panel, clicked with the laser.
++        self.vr_gui_frame(event_loop);
++        // The VR controllers count as a virtual pad: the window may not have focus in the headset.
++        self.pad.virtual_input =
++            self.pad.injected != PadState::default() || horizon_vr::pad().is_some();
+         let context = self.pad_context();
+         if let Some(old) = self.pad.context.filter(|old| *old != context) {
+             if old.screen != context.screen {
+@@ -431,7 +435,7 @@ impl Game<'_> {
+         }
+         self.ui.options.pad_glyphs = Glyphs::of(&self.settings.controller, self.pad.style);
+         self.ui.options.pad_driving = self.pad.in_use && self.pad_focus_mode();
+-        let mut state = hardware.merge(&self.pad.injected);
++        let mut state = hardware.merge(&self.pad.injected).merge(&vr_pad());
+         let activity = self.pad.activity.observe(&state, &self.settings.controller);
+         for (i, (stick, deadzone)) in [
+             (&mut state.left, self.settings.controller.move_deadzone),
+@@ -1022,3 +1026,53 @@ impl Game<'_> {
+         }
+     }
+ }
++
++/// Whether Y went down over a menu (closing it) or in game (opening one), while held.
++static VR_Y_ON_MENU: std::sync::Mutex<Option<bool>> = std::sync::Mutex::new(None);
++
++/// The VR controllers (`horizon_vr::pad`) as a pad's state; at rest while VR is off.
++fn vr_pad() -> PadState {
++    let Some(vr) = horizon_vr::pad() else {
++        return PadState::default();
++    };
++    // A trigger a tracker took (the bow's draw, a hand's touch) neither attacks nor uses.
++    let taken = super::vr_trackers::vr_taken_triggers();
++    // With the menu panel up, the right trigger and grip are the laser's clicks.
++    let menu = horizon_vr::gui_open();
++    let triggers = [0, 1].map(|k| if taken[k] || (menu && k == 1) { 0.0 } else { vr.triggers[k] });
++    let mut state = PadState {
++        buttons: 0,
++        left: super::vr_run::vr_run_stick().unwrap_or(vr.left),
++        // The right stick turns (x) and teleports (y): it never looks.
++        right: [0.0, 0.0],
++        triggers,
++    };
++    let y_started_on_menu = {
++        let mut held = VR_Y_ON_MENU.lock().unwrap_or_else(|e| e.into_inner());
++        if !vr.north {
++            *held = None;
++        }
++        vr.north.then(|| *held.get_or_insert(menu))
++    };
++    let y_opens = y_started_on_menu == Some(false) && !menu;
++    let y_closes = y_started_on_menu == Some(true) && menu;
++    for (button, down) in [
++        (Button::South, vr.south),
++        // In game B is Vivecraft's radial menu key (`vr_radial`), on menus the pad's B.
++        // Vivecraft's inventory key (Y) also closes a menu, as B does: one press, one toggle
++        // (a held Y keeps the action it started with, instead of reopening each frame).
++        (Button::East, vr.east && menu || y_closes),
++        (Button::West, vr.west),
++        (Button::North, y_opens),
++        (Button::LeftBumper, vr.left_bumper && !super::vr_climb_claws::vr_boots_take_grips()),
++        (Button::RightBumper, vr.right_bumper && !menu && !super::vr_camera::vr_camera_touched() && !super::vr_climb_claws::vr_boots_take_grips()),
++        (Button::Start, vr.start),
++        // Vivecraft's `autoSprint` (on, `autoSprintThreshold` 0.9): the walk stick pushed all the
++        // way forward sprints.
++        (Button::LeftStick, vr.left_stick || (state.left[1] >= 0.9 && !menu)),
++        (Button::RightStick, vr.right_stick),
++    ] {
++        state.set(button, down);
++    }
++    state
++}
+diff --git a/crates/horizon-client/src/game/interface/pad_menu.rs b/crates/horizon-client/src/game/interface/pad_menu.rs
+index df497fd..f9eba7d 100644
+--- a/crates/horizon-client/src/game/interface/pad_menu.rs
++++ b/crates/horizon-client/src/game/interface/pad_menu.rs
+@@ -2100,7 +2100,8 @@ impl Game<'_> {
+         if osk_auto_opens(
+             menu.osk.is_some(),
+             menu.osk_dismissed,
+-            self.pad.in_use,
++            // VR: the controllers are the only keys, so chat always brings the keyboard.
++            self.pad.in_use || horizon_vr::pad().is_some(),
+             menu.open_polls,
+             !self.prompt_open()
+                 && ((self.screen == Screen::Chat && !self.ui.in_bed_chat)
+@@ -2489,3 +2490,44 @@ mod tests {
+         assert!(!field_at(&[], (5.0, 5.0)));
+     }
+ }
++
++/// The laser's buttons (trigger, grip) at the last poll, for presses and releases.
++static VR_GUI_BUTTONS: std::sync::Mutex<[bool; 2]> = std::sync::Mutex::new([false; 2]);
++
++impl Game<'_> {
++    /// Vivecraft's `GuiHandler` for menus in VR: the panel shows while a menu is open, the main
++    /// controller's laser moves the pointer over it, the trigger left-clicks and the grip
++    /// right-clicks, through the pad's own pointer.
++    pub(super) fn vr_gui_frame(&mut self, event_loop: &dyn EventLoopCtl) {
++        if horizon_vr::sim_mode() && self.player.is_some() {
++            let rotation = super::vr_player::vr_player().as_ref().map_or(0.0, |v| v.world_rotation.to_radians());
++            horizon_vr::simulate(self.yaw, self.pitch, rotation);
++        }
++        let running = horizon_vr::pad().is_some();
++        let open = running && (self.screen != Screen::Playing || self.title.is_some());
++        horizon_vr::set_gui_open(open);
++        horizon_vr::set_hud(running && !open && self.player.is_some());
++        horizon_vr::set_in_world(self.player.is_some() && self.title.is_none());
++        let pad = horizon_vr::pad();
++        let now = if open {
++            pad.map_or([false; 2], |p| [p.triggers[1] > 0.5, p.right_bumper])
++        } else {
++            [false; 2]
++        };
++        if open
++            && let Some([u, v]) = horizon_vr::gui_pointer()
++            && let Some(batch) = self.gui_batch()
++        {
++            self.pad_pointer_to(event_loop, (u * batch.width, v * batch.height));
++        }
++        let was = std::mem::replace(
++            &mut *VR_GUI_BUTTONS.lock().unwrap_or_else(|e| e.into_inner()),
++            now,
++        );
++        for (k, right) in [(0, false), (1, true)] {
++            if now[k] != was[k] {
++                self.pad_pointer_button(event_loop, right, now[k]);
++            }
++        }
++    }
++}
+diff --git a/crates/horizon-client/src/game/interface/perspective.rs b/crates/horizon-client/src/game/interface/perspective.rs
+index aa5c524..6fdbbb5 100644
+--- a/crates/horizon-client/src/game/interface/perspective.rs
++++ b/crates/horizon-client/src/game/interface/perspective.rs
+@@ -1297,6 +1297,11 @@ impl Game<'_> {
+                 .and_then(|s| self.items().get(&s.item))
+                 .and_then(|info| info.arm_pose)
+         });
++        // Vivecraft's `VRPlayerModel`: another VR player's arms reach for their controllers.
++        if let Some(angles) = self.vr_net_arm_angles(entity_id, m) {
++            let pose = horizon_core::arm_pose::ArmPose::Custom { slot: u32::MAX, both: false, offhand: false, angles };
++            return [Some(pose), Some(pose)];
++        }
+         if !mod_api::__private::listened(mod_api::HookId::GetArmPose) {
+             return poses;
+         }
+diff --git a/crates/horizon-client/src/game/interface/play_keys.rs b/crates/horizon-client/src/game/interface/play_keys.rs
+index a2fc208..a1f279c 100644
+--- a/crates/horizon-client/src/game/interface/play_keys.rs
++++ b/crates/horizon-client/src/game/interface/play_keys.rs
+@@ -498,3 +498,23 @@ mod swap_hands_tests {
+         });
+     }
+ }
++
++impl Game<'_> {
++    /// key.swapOffhand as the F key does it, for VR's backpack reach (Vivecraft's
++    /// `BackpackTracker`, `backpackOffhandKeybind`).
++    pub(super) fn vr_swap_offhand(&mut self) {
++        if self.screen != Screen::Playing {
++            return;
++        }
++        if self.remote.is_some() {
++            if !self.spectator()
++                && let Some(r) = self.remote.as_mut()
++            {
++                r.pending_keys.push(KeyCode::KeyF);
++            }
++        } else {
++            self.select_queued_hotbar();
++            self.own_swap_hands();
++        }
++    }
++}
+diff --git a/crates/horizon-client/src/game/interface/player_hooks.rs b/crates/horizon-client/src/game/interface/player_hooks.rs
+index add95ae..6b7b443 100644
+--- a/crates/horizon-client/src/game/interface/player_hooks.rs
++++ b/crates/horizon-client/src/game/interface/player_hooks.rs
+@@ -23,6 +23,12 @@ pub(crate) fn register() {
+     if let Err(e) = super::cosmetics::register() {
+         log::error!("Cosmetics: their hooks came too late: {e}");
+     }
++    // Vivecraft's VR settings: only for a VR game, so the pause menu is as before without it.
++    if (horizon_vr::requested() || horizon_vr::sim_mode())
++        && let Err(e) = super::vr_settings::register()
++    {
++        log::error!("Horizon VR: settings came too late: {e}");
++    }
+ }
+ 
+ /// The models of the world a window shows: its own first, then the other players and mannequins.
+diff --git a/crates/horizon-client/src/game/interface/pointer_capture.rs b/crates/horizon-client/src/game/interface/pointer_capture.rs
+index 16664ff..8add70f 100644
+--- a/crates/horizon-client/src/game/interface/pointer_capture.rs
++++ b/crates/horizon-client/src/game/interface/pointer_capture.rs
+@@ -99,6 +99,8 @@ impl Game<'_> {
+             && !self.options.no_pause
+             && self.settings.file.bool("pauseOnLostFocus")
+             && !self.pad_keeps_playing_unfocused()
++            // Vivecraft: in VR the desktop window is never focused; it does not pause the game.
++            && !self.vr_running()
+             && self.book.is_none()
+             && self.sign_edit.is_none()
+             && self.server_packs.prompt.is_none()
+diff --git a/crates/horizon-client/src/game/interface/render_tick.rs b/crates/horizon-client/src/game/interface/render_tick.rs
+index 76fbc77..a051c8b 100644
+--- a/crates/horizon-client/src/game/interface/render_tick.rs
++++ b/crates/horizon-client/src/game/interface/render_tick.rs
+@@ -335,24 +335,70 @@ impl Game<'_> {
+             p.position.z,
+         ];
+         let mut effects = self.block_screen_effects(p, eye, partial, size, scale);
++        // VR: Vivecraft draws the face effects in the eyes (`VREffectsHelper`), not on the window's
++        // picture, which is the wrist HUD there.
++        // VR: vanilla's face effects are the eye tint below; only mods' screen effects and
++        // camera overlays go on as quads, which the renderer lays over each eye.
++        let vr = horizon_vr::poses().is_some() && !horizon_vr::screen_mode();
++        if vr {
++            let fx = &self.screen_fx;
++            let portal = fx.o_portal + (fx.portal - fx.o_portal) * partial;
++            let pumpkin = self.armor[0].as_ref().is_some_and(|s| s.item.ends_with("carved_pumpkin"));
++            let frozen = p.percent_frozen();
++            let low = p.health.health() <= 6.0 && !p.health.dead_or_dying();
++            let nausea = self.nausea_blend(partial) * self.screen_effect_scale();
++            let border = if self.vignette_shown() {
++                self.border.warning_strength(p.position.x, p.position.z)
++            } else {
++                0.0
++            };
++            let pulse = {
++                let ms = std::time::SystemTime::now()
++                    .duration_since(std::time::UNIX_EPOCH)
++                    .map_or(0, |d| d.as_millis() % 1000) as f32;
++                0.5 + 0.5 * (ms / 1000.0 * std::f32::consts::TAU).sin()
++            };
++            let tint = if pumpkin {
++                Some(([0.05, 0.03, 0.0, 0.9], 1.0))
++            } else if portal > 0.0 {
++                Some(([0.45, 0.1, 0.75, 0.6 * portal], 0.0))
++            } else if frozen > 0.0 {
++                Some(([0.75, 0.9, 1.0, 0.55 * frozen], 1.0))
++            } else if effects.on_fire {
++                Some(([1.0, 0.45, 0.05, 0.35], 1.0))
++            } else if effects.water {
++                Some(([0.05, 0.2, 0.55, 0.35], 0.6))
++            } else if nausea > 0.0 {
++                Some(([0.35, 0.55, 0.2, nausea * (0.25 + 0.15 * pulse)], 0.0))
++            } else if low {
++                Some(([0.8, 0.0, 0.0, 0.25 + 0.25 * pulse], 1.0))
++            } else if border > 0.0 {
++                Some(([0.8, 0.0, 0.0, 0.6 * border], 1.0))
++            } else {
++                None
++            };
++            horizon_vr::set_eye_tint(tint);
++        } else {
++            horizon_vr::set_eye_tint(None);
++        }
+         let custom = self.custom_screen_effects(&mut effects, partial, hand_projection);
+         // ScreenEffectRenderer: the block's particle material.
+         let block_overlay = effects
+             .block
++            .filter(|_| !vr)
+             .and_then(|state| Self::block_particle_sprite(&self.pack, state));
+-        let water = effects
+-            .water
++        let water = (effects.water && !vr)
+             .then(|| (self.eye_brightness(eye), self.yaw, self.pitch));
+         // Hud.extractCameraOverlays; the spyglass scope (and its easing) is
+         // drawn on the HUD by draw_spyglass.
+         let fx = &self.screen_fx;
+         let overlays = hud_overlays::CameraOverlays {
+-            vignette: self.vignette_shown().then_some((
++            vignette: (self.vignette_shown() && !vr).then_some((
+                 fx.vignette_brightness,
+                 self.border.warning_strength(p.position.x, p.position.z),
+             )),
+             first_person: self.camera_type.is_first_person(),
+-            scoping: self.scoping(),
++            scoping: self.scoping() && !vr,
+             game_time_delta: 0.0,
+             equipment: [
+                 (self.inventory[self.selected].as_ref(), "mainhand"),
+@@ -369,6 +415,10 @@ impl Game<'_> {
+                     return None;
+                 }
+                 let overlay = e.camera_overlay?;
++                // The pumpkin's is the eye tint in VR.
++                if vr && overlay.ends_with("misc/pumpkinblur") {
++                    return None;
++                }
+                 Some(
+                     overlay
+                         .strip_prefix("minecraft:")
+@@ -376,11 +426,11 @@ impl Game<'_> {
+                 )
+             })
+             .collect(),
+-            ticks_frozen: p.ticks_frozen,
+-            percent_frozen: p.percent_frozen(),
++            ticks_frozen: if vr { 0 } else { p.ticks_frozen },
++            percent_frozen: if vr { 0.0 } else { p.percent_frozen() },
+             partial,
+-            portal: [fx.o_portal, fx.portal],
+-            nausea: self.nausea_blend(partial),
++            portal: if vr { [0.0; 2] } else { [fx.o_portal, fx.portal] },
++            nausea: if vr { 0.0 } else { self.nausea_blend(partial) },
+             screen_effect_scale: self.screen_effect_scale(),
+         };
+         let mut scope = self.scope_scale;
+@@ -393,7 +443,7 @@ impl Game<'_> {
+             partial,
+             block_overlay,
+             water,
+-            on_fire: effects.on_fire,
++            on_fire: effects.on_fire && !vr,
+             fire_lower: self.pvp_fire_lower(),
+             gui_overlays: &gui_overlays,
+             custom: [&custom[0], &custom[1], &custom[2]],
+diff --git a/crates/horizon-client/src/game/interface/scoreboard/mod.rs b/crates/horizon-client/src/game/interface/scoreboard/mod.rs
+index 66cc655..8885780 100644
+--- a/crates/horizon-client/src/game/interface/scoreboard/mod.rs
++++ b/crates/horizon-client/src/game/interface/scoreboard/mod.rs
+@@ -936,7 +936,8 @@ impl Game<'_> {
+         // Player heads and the player list both draw from the same skin
+         // slots: a new frame, with what the last one drew.
+         self.flush_skin_slots();
+-        let key = self.screen == super::Screen::Playing && self.keys.held(Action::Playerlist);
++        let key = self.screen == super::Screen::Playing
++            && (self.keys.held(Action::Playerlist) || super::vr_radial::vr_player_list_shown());
+         let count = self.remote.as_ref().map_or_else(
+             || {
+                 1 + self
+@@ -947,11 +948,13 @@ impl Game<'_> {
+             |r| r.listed_player_count(),
+         );
+         let has_objective = self.score.board.display_objective(sb::SLOT_LIST).is_some();
++        let vr_toggled = self.screen == super::Screen::Playing && super::vr_radial::vr_player_list_shown();
++        // VR's radial "Toggle Player List" shows it even alone in single player, as asked for.
+         let shown = tab_list::visible(
+             // `Hud.extractRenderState` draws the list inside `if (!isHidden)`.
+             !self.ui.hide_gui,
+             key,
+-            self.has_singleplayer_server(),
++            self.has_singleplayer_server() && !vr_toggled,
+             count,
+             has_objective,
+         );
+diff --git a/crates/horizon-client/src/game/interface/screen_backgrounds.rs b/crates/horizon-client/src/game/interface/screen_backgrounds.rs
+index e8d4148..913292d 100644
+--- a/crates/horizon-client/src/game/interface/screen_backgrounds.rs
++++ b/crates/horizon-client/src/game/interface/screen_backgrounds.rs
+@@ -109,6 +109,10 @@ impl Game<'_> {
+     /// behind an in-game screen (inventory, containers, creative, books, signs, editors),
+     /// giving native mods a chance to suppress it (`Flow::Cancel`) or apply menu blur / tiled background.
+     pub(super) fn render_transparent_background(&self, screen: &str, batch: &mut HudBatch) {
++        // VR: Vivecraft's menu panel floats in the headset's world; only the menu shows on it.
++        if horizon_vr::panel_clear_wanted() {
++            return;
++        }
+         let mut canceled = false;
+         self.native_screen_transparent_background(screen, batch, &mut canceled);
+         if !canceled {
+diff --git a/crates/horizon-client/src/game/items/clip_ray.rs b/crates/horizon-client/src/game/items/clip_ray.rs
+index c7f565d..2cd9b06 100644
+--- a/crates/horizon-client/src/game/items/clip_ray.rs
++++ b/crates/horizon-client/src/game/items/clip_ray.rs
+@@ -3,7 +3,7 @@ use super::*;
+ 
+ impl Game<'_> {
+     /// `clip_ray`; with `fluids`, the first fluid block a hit too, at its near face (`ClipContext.Fluid.ANY`).
+-    pub(super) fn clip_ray_fluids(
++    pub(crate) fn clip_ray_fluids(
+         &self,
+         origin: [f64; 3],
+         dir: [f64; 3],
+diff --git a/crates/horizon-client/src/game/items/hand.rs b/crates/horizon-client/src/game/items/hand.rs
+index db8b118..6214409 100644
+--- a/crates/horizon-client/src/game/items/hand.rs
++++ b/crates/horizon-client/src/game/items/hand.rs
+@@ -1298,3 +1298,103 @@ mod tests {
+         }
+     }
+ }
++
++/// Vivecraft's roomscale hands (`client_vr/gameplay/trackers/SwingTracker.java`, VivecraftMod,
++/// LGPL-3.0): the swing tracker breaks and hits through the same calls a click makes.
++impl Game<'_> {
++    /// A roomscale hit on a block: `startDestroyBlock`, then `hits` ticks of
++    /// `continueDestroyBlock` while it holds (faster swings send more), then a swing of `hand`.
++    /// Returns whether the block is still being broken.
++    pub(super) fn vr_roomscale_mine(
++        &mut self,
++        pos: [i32; 3],
++        face: u8,
++        hits: u32,
++        hand: Hand,
++    ) -> Result<bool> {
++        let mut clicks = std::mem::take(&mut self.clicks);
++        let mut world = GameHands {
++            game: self,
++            error: None,
++        };
++        clicks.destroying.start(&mut world, pos, face);
++        if clicks.destroying.active {
++            for _ in 0..hits {
++                clicks.destroying.continue_destroy(&mut world, pos, face);
++                if !clicks.destroying.active {
++                    break;
++                }
++            }
++            clicks.destroying.delay = 0;
++        }
++        let animation = world.attack_animation();
++        world.swing(hand, animation);
++        let error = world.error.take();
++        let still = clicks.destroying.active;
++        self.clicks = clicks;
++        match error {
++            Some(e) => Err(e),
++            None => Ok(still),
++        }
++    }
++
++    /// `stopDestroyBlock` for a roomscale hit the hand left.
++    pub(super) fn vr_stop_mining(&mut self) {
++        let mut clicks = std::mem::take(&mut self.clicks);
++        let mut world = GameHands {
++            game: self,
++            error: None,
++        };
++        clicks.destroying.stop(&mut world);
++        self.clicks = clicks;
++    }
++
++    /// `MultiPlayerGameMode.attack(player, entity)` on the mob `index` the weapon touched.
++    pub(super) fn vr_attack_mob(&mut self, index: usize, hand: Hand) -> bool {
++        let Some(m) = self.mobs.get(index) else {
++            return false;
++        };
++        let c = m.bounds().center();
++        let distance = self
++            .eye_position()
++            .map_or(0.0, |e| ((e[0] - c.x).powi(2) + (e[1] - c.y).powi(2) + (e[2] - c.z).powi(2)).sqrt());
++        let saved = (self.tick_mob, self.tick_hit.get());
++        self.tick_mob = Some(Some((index, distance, [c.x, c.y, c.z])));
++        self.tick_hit.set(Some(None));
++        let hit = self.attack();
++        if hit {
++            self.reset_attack_strength();
++            self.swing_hand(hand, SwingAnimation::DEFAULT);
++        }
++        self.tick_mob = saved.0;
++        self.tick_hit.set(saved.1);
++        hit
++    }
++
++    /// `MultiPlayerGameMode.useItemOn` at a roomscale touch (`InteractTracker`, door punching):
++    /// uses `hand` on the block `hit` as a click on it would.
++    pub(super) fn vr_use_on(&mut self, hit: super::Hit, _hand: Hand) -> Result<()> {
++        let saved = self.tick_hit.get();
++        self.tick_hit.set(Some(Some(hit)));
++        let r = self.use_with_hand();
++        self.tick_hit.set(saved);
++        r
++    }
++}
++
++impl Game<'_> {
++    /// `MultiPlayerGameMode.interact` on the mob `index` a hand is in (`EntityInteractionModule`).
++    pub(super) fn vr_interact_mob(&mut self, index: usize) -> Result<()> {
++        let Some(m) = self.mobs.get(index) else {
++            return Ok(());
++        };
++        let c = m.bounds().center();
++        let saved = (self.tick_mob, self.tick_hit.get());
++        self.tick_mob = Some(Some((index, 0.0, [c.x, c.y, c.z])));
++        self.tick_hit.set(Some(None));
++        let r = self.use_with_hand();
++        self.tick_mob = saved.0;
++        self.tick_hit.set(saved.1);
++        r
++    }
++}
+diff --git a/crates/horizon-client/src/game/items/using_item.rs b/crates/horizon-client/src/game/items/using_item.rs
+index 3623060..d06f378 100644
+--- a/crates/horizon-client/src/game/items/using_item.rs
++++ b/crates/horizon-client/src/game/items/using_item.rs
+@@ -111,7 +111,9 @@ impl Game<'_> {
+             return;
+         }
+         let hand_changed = self.use_hand_changed(slot);
+-        if !self.right || hand_changed || self.screen != Screen::Playing {
++        // VR: eating at the mouth and drawing a bow hold the use (Vivecraft's `ItemInUseTracker`).
++        let held = self.right || (self.serving.is_none() && super::vr_trackers::vr_item_in_use());
++        if !held || hand_changed || self.screen != Screen::Playing {
+             self.using = None;
+             self.release_used_item(&stack, ticks, hand_changed);
+             return;
+diff --git a/crates/horizon-client/src/game/network/lan_actions/guest_body.rs b/crates/horizon-client/src/game/network/lan_actions/guest_body.rs
+index 7436af2..1951aec 100644
+--- a/crates/horizon-client/src/game/network/lan_actions/guest_body.rs
++++ b/crates/horizon-client/src/game/network/lan_actions/guest_body.rs
+@@ -131,6 +131,9 @@ impl Game<'_> {
+         let at = g.position;
+         let dimensions = g.dimensions();
+         let (sneaking, sleeping) = (g.sneaking, g.sleeping);
++        // Vivecraft's server-side crawl (`SERVER_ALLOWS_CRAWLING`): the integrated server's owner
++        // lying down in VR crawls here too.
++        let vr_crawl = super::super::vr_crawl::vr_crawl_host() == Some(g.uuid);
+         let riding = g.vehicle.is_some();
+         if g.motion
+             .as_ref()
+@@ -242,6 +245,7 @@ impl Game<'_> {
+             // Entity.applyEffectsFromBlocks along those moves: magma, cactus,
+             // lit campfires and grown sweet berry bushes hurt (arismoko/horizon#1305).
+             w.player.shift_key_down = sneaking;
++            w.player.vr_crawl = vr_crawl;
+             let _ = w.player.set_sleeping(sleeping);
+             w.player.leather_boots = leather_boots;
+             w.player.freeze_immune = freeze_immune;
+diff --git a/crates/horizon-client/src/game/network/remote/mod.rs b/crates/horizon-client/src/game/network/remote/mod.rs
+index b1a918f..5b8a593 100644
+--- a/crates/horizon-client/src/game/network/remote/mod.rs
++++ b/crates/horizon-client/src/game/network/remote/mod.rs
+@@ -3238,6 +3238,10 @@ impl Game<'_> {
+             // thread, after all preceding packets (especially teleports).
+             C::Ping(p) => self.send(S::Pong(p)),
+             // The server's next generation of mod registries: all of it or the connection.
++            // Vivecraft's server plugin (`ClientNetworking.handlePacket`).
++            C::CustomPayload(p) if p.channel == super::vr_net::CHANNEL => {
++                self.vr_net_receive(&p.data);
++            }
+             C::CustomPayload(p) if p.channel == horizon_client::datapack_net::CHANNEL => {
+                 horizon_client::datapack_net::accept_chunk(&p.data)?;
+             }
+@@ -3316,6 +3320,8 @@ impl Game<'_> {
+                 if let Some(player) = self.player.as_mut() {
+                     player.entity_id = p.player_id;
+                 }
++                // `ClientPacketListenerVRMixin.handleLogin`: tell a Vivecraft server who is here.
++                self.vr_net_join();
+                 if let Some(r) = self.remote.as_mut() {
+                     r.carried.set(Some(0));
+                     // handleLogin makes a new ClientLevel: its predictions count from 0.
+@@ -3361,6 +3367,8 @@ impl Game<'_> {
+                 }
+             }
+             C::Respawn(p) => {
++                // `ClientPacketListenerVRMixin.handleRespawn`: the server's settings again.
++                self.vr_net_join();
+                 // The new LocalPlayer copies reduced debug info through its setter.
+                 self.debug_entries.invalidate();
+                 let old_player = self.remote.as_ref().map(|r| (r.entity_id, r.profile));
+@@ -6272,7 +6280,12 @@ impl Game<'_> {
+         if let Some(player) = player {
+             self.native_player_tick_pre(mod_api::__private::PlayerTickPreCall { player });
+         }
++        // VR: Vivecraft's VRPlayer around the player's physics (preTick / tick / postTick).
++        self.vr_pre_tick();
+         let result = self.tick_local_player(entity_collisions, pushed, sprint_window);
++        let result = result.and_then(|()| self.vr_post_tick());
++        // `VRPlayer.postTick`: `sendVRPlayerPositions`.
++        self.vr_net_tick();
+         entity_section_steps::player_after(self, player_from);
+         // `EntityEvent.Size` for the pose the tick set.
+         self.native_local_player_size();
+@@ -6330,6 +6343,12 @@ impl Game<'_> {
+         if self.integrated.is_none() && self.server_address().is_some() {
+             keys.analog = None;
+         }
++        // VR: roomscale jumps and crouches (Vivecraft's JumpTracker and SneakTracker).
++        if playing {
++            let (jump, sneak) = self.vr_movement_keys();
++            keys.jump |= jump;
++            keys.shift |= sneak;
++        }
+         let keys = self.mod_movement_keys(keys);
+         let input = u8::from(keys.forward)
+             | u8::from(keys.backward) << 1
+@@ -6778,6 +6797,7 @@ impl Game<'_> {
+                     .map_or(25, |stack| Self::charge_ticks(stack).max(1)) as i32
+             });
+             self.mobs[i].extra.held_arm_pose = poses;
++            self.mobs[i].extra.vr_leg_angles = self.vr_net_leg_angles(self.mobs[i].id, &self.mobs[i]);
+             if let Some(duration) = charge_duration {
+                 self.mobs[i].extra.ints[5] = duration;
+             }
+@@ -9850,7 +9870,7 @@ impl Game<'_> {
+         let r = self.remote.as_ref()?;
+         r.level_player_name(id as i32, &r.player_uuid(id)?)
+     }
+-    pub(super) fn remote_player_uuid(&self, id: u32) -> Option<u128> {
++    pub(in crate::game) fn remote_player_uuid(&self, id: u32) -> Option<u128> {
+         let remote = self.remote.as_ref()?;
+         if self.player_model.as_ref().is_some_and(|m| m.id == id) {
+             Some(remote.profile)
+diff --git a/crates/horizon-client/src/game/network/remote_chat.rs b/crates/horizon-client/src/game/network/remote_chat.rs
+index 9cb4b6b..4baeebb 100644
+--- a/crates/horizon-client/src/game/network/remote_chat.rs
++++ b/crates/horizon-client/src/game/network/remote_chat.rs
+@@ -279,7 +279,7 @@ impl Game<'_> {
+     /// signature list is empty, as in vanilla); any other command goes as the
+     /// unsigned packet on releases that have one. Before 1.20.5 even a command
+     /// without message arguments carries the real last-seen acknowledgement.
+-    pub(super) fn send_command(&mut self, command: &str) {
++    pub(crate) fn send_command(&mut self, command: &str) {
+         let Some(r) = self.remote.as_mut() else {
+             return;
+         };
+diff --git a/crates/horizon-client/src/game/runtime/loading_window.rs b/crates/horizon-client/src/game/runtime/loading_window.rs
+index 041b72b..135fde5 100644
+--- a/crates/horizon-client/src/game/runtime/loading_window.rs
++++ b/crates/horizon-client/src/game/runtime/loading_window.rs
+@@ -407,6 +407,9 @@ pub(super) fn start_game<'a>(
+     // per process, here in `run`, after the initial load applied.
+     // A dedicated server has no client and returned above; a splitscreen guest's `run` is
+     // another local player of the same process.
++    // Entity renderers read the mob types, which the background world-resource load fills: wait
++    // for it, or a slow load (items past the title screen) panics in `Resources::rest`.
++    game.join_world_rest()?;
+     game.publish_initial_client_models();
+     // Finish Setup -> Config -> World before any screen, connection, input or tick hooks.
+     game.native_configs_client_start();
+diff --git a/crates/horizon-client/src/mobs.rs b/crates/horizon-client/src/mobs.rs
+index bac3a5d..9189a7c 100644
+--- a/crates/horizon-client/src/mobs.rs
++++ b/crates/horizon-client/src/mobs.rs
+@@ -1109,6 +1109,9 @@ pub struct Extra {
+     /// The `arm_pose` the items in the main and off hand declare, if any: the pose
+     /// a humanoid model's arm takes holding it, in place of vanilla's.
+     pub held_arm_pose: [Option<horizon_core::arm_pose::ArmPose>; 2],
++    /// Another VR player's right leg, left leg and body angles (x, y, z radians) from their
++    /// foot and waist trackers, and how far the hips moved (pixels).
++    pub vr_leg_angles: Option<([[f32; 3]; 3], [f32; 3])>,
+     pub fall_flying: bool,
+     pub fall_fly_ticks: i32,
+     /// `Entity.deltaMovementOnPreviousTick`: the velocity before this tick's
+diff --git a/crates/horizon-client/src/mobs/anim.rs b/crates/horizon-client/src/mobs/anim.rs
+index 1b0eb18..fd1349f 100644
+--- a/crates/horizon-client/src/mobs/anim.rs
++++ b/crates/horizon-client/src/mobs/anim.rs
+@@ -1028,6 +1028,15 @@ fn vanilla_setup(
+             h.left_main = m.main_arm_left();
+             humanoid_spears(m, &mut h, s.partial);
+             humanoid(p, s, &h);
++            if let Some((angles, hips)) = m.extra.vr_leg_angles {
++                for (name, a) in ["right_leg", "left_leg", "body"].into_iter().zip(angles) {
++                    let part = p.get(name);
++                    part[3..6].copy_from_slice(&a);
++                    for i in 0..3 {
++                        part[i] += hips[i];
++                    }
++                }
++            }
+             if player {
+                 player_model_visibility(p, m.extra.hidden_model_parts, m.extra.spectator);
+             }
+diff --git a/crates/horizon-client/src/motion.rs b/crates/horizon-client/src/motion.rs
+index 9cf8a87..0b29b2a 100644
+--- a/crates/horizon-client/src/motion.rs
++++ b/crates/horizon-client/src/motion.rs
+@@ -521,6 +521,9 @@ pub struct PlayerMotion {
+     pub ticks_frozen: i32,
+     /// Leather boots on the feet (`PowderSnowBlock.canEntityWalkOnPowderSnow`).
+     pub leather_boots: bool,
++    /// Vivecraft's `CrawlTracker`: the VR player lies down, so the desired pose is swimming
++    /// (Vivecraft's server side, `PlayerMixin`, as the world's host here).
++    pub vr_crawl: bool,
+     /// An armor piece in `#freeze_immune_wearables` (`LivingEntity.canFreeze`).
+     pub freeze_immune: bool,
+     /// A worn enchantment's `damage_immunity` to `#burn_from_stepping` (frost walker).
+diff --git a/crates/horizon-client/src/motion/player_init.rs b/crates/horizon-client/src/motion/player_init.rs
+index b730f2e..99f8e97 100644
+--- a/crates/horizon-client/src/motion/player_init.rs
++++ b/crates/horizon-client/src/motion/player_init.rs
+@@ -98,6 +98,7 @@ impl PlayerMotion {
+             ticks_frozen: 0,
+             leather_boots: false,
+             freeze_immune: false,
++            vr_crawl: false,
+             burn_from_stepping_immune: false,
+             old_position: position,
+             server_copy: false,
+diff --git a/crates/horizon-client/src/pose.rs b/crates/horizon-client/src/pose.rs
+index 8a50ce7..d6a9eff 100644
+--- a/crates/horizon-client/src/pose.rs
++++ b/crates/horizon-client/src/pose.rs
+@@ -248,6 +248,8 @@ impl MotionWorld<'_, '_, '_> {
+             Pose::FallFlying
+         } else if self.player.auto_spin_attack_ticks > 0 {
+             Pose::SpinAttack
++        } else if self.player.vr_crawl {
++            Pose::Swimming
+         } else if self.player.shift_key_down && !self.player.flying {
+             Pose::Crouching
+         } else {
