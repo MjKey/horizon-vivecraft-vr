@@ -34,12 +34,15 @@ function Run($exe, $arguments, $dir, $say) {
         -RedirectStandardOutput $out -RedirectStandardError "$out.err"
     # Windows PowerShell only keeps ExitCode when the handle was read while the process ran.
     $null = $p.Handle
-    $shown = 0
+    # Each stream keeps its own count of lines shown.
+    $shown = @{ $out = 0; "$out.err" = 0 }
     do {
         $done = $p.HasExited
         Start-Sleep -Milliseconds 200
-        $lines = @(Get-Content $out, "$out.err" -ErrorAction SilentlyContinue)
-        for (; $shown -lt $lines.Count; $shown++) { & $say $lines[$shown] }
+        foreach ($f in $out, "$out.err") {
+            $lines = @(Get-Content $f -ErrorAction SilentlyContinue)
+            for (; $shown[$f] -lt $lines.Count; $shown[$f]++) { & $say $lines[$shown[$f]] }
+        }
     } until ($done)
     $p.WaitForExit()
     Remove-Item $out, "$out.err" -ErrorAction SilentlyContinue
@@ -48,6 +51,7 @@ function Run($exe, $arguments, $dir, $say) {
 
 # The whole install. Throws with a message the player can act on.
 function Install($dest, $mc, $server, $say) {
+    $ErrorActionPreference = 'Stop'
     if (-not (Test-Path (Join-Path $here 'files\horizon-client.exe'))) {
         throw 'The game files are missing. Unzip the whole HorizonVR-Installer.zip and run the installer from the unzipped folder.'
     }
@@ -57,13 +61,20 @@ function Install($dest, $mc, $server, $say) {
     if (-not $server -or -not (Test-Path $server -PathType Leaf)) {
         throw 'Choose the Minecraft 26.3 server jar (download it from minecraft.net).'
     }
-    if ((Get-Process horizon-client -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$dest*" })) {
+    $dest = [IO.Path]::GetFullPath($dest).TrimEnd('')
+    if ((Get-Process horizon-client -ErrorAction SilentlyContinue | Where-Object { $_.Path -and (Split-Path $_.Path) -eq $dest })) {
         throw 'Horizon VR is running from that folder. Close it first.'
     }
 
     & $say "Copying Horizon VR to $dest..."
     New-Item -ItemType Directory -Force $dest | Out-Null
-    Get-ChildItem (Join-Path $here 'files') | Copy-Item -Destination $dest -Recurse -Force
+    # Replace what an earlier install shipped, so no file a newer version dropped stays behind;
+    # .local (the prepared game files) is kept.
+    foreach ($item in Get-ChildItem (Join-Path $here 'files')) {
+        $old = Join-Path $dest $item.Name
+        if (Test-Path -LiteralPath $old) { Remove-Item -LiteralPath $old -Recurse -Force }
+        Copy-Item -LiteralPath $item.FullName -Destination $dest -Recurse -Force
+    }
 
     # The Minecraft Launcher may rewrite its 26.3 version file; fetch Mojang's own, as the
     # preparer asks, and check it against the pinned SHA-1.
