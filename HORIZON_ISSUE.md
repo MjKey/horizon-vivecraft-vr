@@ -44,7 +44,7 @@ renderer replacements at all.
 | `horizon_client_render::gfx::Renderer` | `vr_screen: Option<[wgpu::Texture; 2]>` | Per-eye texture for screen effects |
 | `gfx::world_views::Lists` | eye draw lists | One draw list per eye |
 | `horizon_client::mobs::Extra` | `vr_leg_angles` | Other VR players' legs and body from their trackers |
-| `horizon_client::motion` (player motion state) | `vr_crawl` | Roomscale crawling |
+| `horizon_client::motion::PlayerMotion` | `vr_crawl` | Roomscale crawling |
 
 **Ask:** a way to keep per-renderer state in a mod. The renderer fields could live in the mod's own
 statics, if the render hook above passes the device and queue. Player model state could use an
