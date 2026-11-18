@@ -1763,6 +1763,56 @@ pub struct Pad {
 }
 
 static PAD: Mutex<Option<Pad>> = Mutex::new(None);
+static HOLD_Y: Mutex<HoldY> = Mutex::new(HoldY { since: None, tap_until: None });
+
+/// Y: a tap is North (the inventory), a hold is Start (pause), since the runtime can take the
+/// left menu button (SteamVR's dashboard on a Quest).
+struct HoldY {
+    since: Option<std::time::Instant>,
+    /// A tap shows as North until then, long enough for the game to see the press.
+    tap_until: Option<std::time::Instant>,
+}
+
+impl HoldY {
+    const HOLD: std::time::Duration = std::time::Duration::from_millis(500);
+    const TAP: std::time::Duration = std::time::Duration::from_millis(100);
+
+    /// This frame's (North, Start) from whether Y is down.
+    fn step(&mut self, down: bool, now: std::time::Instant) -> (bool, bool) {
+        if down {
+            let since = *self.since.get_or_insert(now);
+            return (false, now - since >= Self::HOLD);
+        }
+        if let Some(since) = self.since.take()
+            && now - since < Self::HOLD
+        {
+            self.tap_until = Some(now + Self::TAP);
+        }
+        (self.tap_until.is_some_and(|t| now < t), false)
+    }
+}
+
+#[cfg(test)]
+mod hold_y_tests {
+    use super::HoldY;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn a_tap_is_north_and_a_hold_is_start() {
+        let t = Instant::now();
+        let ms = |n| t + Duration::from_millis(n);
+        let mut y = HoldY { since: None, tap_until: None };
+        // Tap: nothing while down, North for a moment after the release.
+        assert_eq!(y.step(true, ms(0)), (false, false));
+        assert_eq!(y.step(false, ms(200)), (true, false));
+        assert_eq!(y.step(false, ms(250)), (true, false));
+        assert_eq!(y.step(false, ms(400)), (false, false));
+        // Hold: Start from half a second while down, no North after.
+        assert_eq!(y.step(true, ms(1000)), (false, false));
+        assert_eq!(y.step(true, ms(1600)), (false, true));
+        assert_eq!(y.step(false, ms(1700)), (false, false));
+    }
+}
 
 /// The controllers as they were at the last frame, while VR runs with the headset on.
 pub fn pad() -> Option<Pad> {
@@ -1908,6 +1958,11 @@ impl Running {
                         .state(session, xr::Path::NULL)
                         .is_ok_and(|s| s.current_state)
                 };
+                // SteamVR on a Quest keeps the left menu button for its own menu: holding Y pauses.
+                let y = HOLD_Y
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .step(b(3), std::time::Instant::now());
                 Some(Pad {
                     left: v2(&input.walk),
                     // The right stick snap-turns the body (`Running::snap_turn`), the right hand aims.
@@ -1916,10 +1971,10 @@ impl Running {
                     south: b(0),
                     east: b(1),
                     west: b(2),
-                    north: b(3),
+                    north: y.0,
                     left_bumper: f(&input.grips[0]) > 0.6,
                     right_bumper: f(&input.grips[1]) > 0.6,
-                    start: b(4),
+                    start: b(4) || y.1,
                     left_stick: b(5),
                     right_stick: b(6),
                 })

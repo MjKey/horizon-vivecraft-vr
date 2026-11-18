@@ -1,7 +1,18 @@
-# Makes HorizonVR-Installer.zip: the prebuilt game (from a Horizon checkout with the VR port,
+﻿# Makes HorizonVR-Installer.zip: the prebuilt game (from a Horizon checkout with the VR port,
 # built with `cargo build --profile fast -p horizon-game`) and the installer window.
 param([string]$Horizon = (Join-Path $PSScriptRoot '..\..\horizon'))
 $ErrorActionPreference = 'Stop'
+# Each release needs a higher VERSION than the latest one on GitHub, or the installers already out
+# there won't see it as an update.
+$version = [version](Get-Content (Join-Path $PSScriptRoot 'VERSION') -Raw).Trim()
+try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $latest = [version]((Invoke-RestMethod -UseBasicParsing -TimeoutSec 15 'https://api.github.com/repos/v1nx0/horizon-vivecraft-vr/releases/latest').tag_name.TrimStart('v'))
+    if ($version -le $latest) { throw "VERSION is $version but GitHub already has ${latest}: raise installer\VERSION first." }
+} catch [System.Net.WebException] {
+    Write-Warning "Couldn't check GitHub's latest release: $_"
+}
+Write-Host "Building Horizon VR $version (publish it with the tag v$version)"
 $out = Join-Path $PSScriptRoot 'out'
 $stage = Join-Path $out 'HorizonVR-Installer'
 $files = Join-Path $stage 'files'
@@ -32,3 +43,4 @@ Copy-Item (Join-Path $PSScriptRoot 'VERSION') (Join-Path $files 'version.txt')
 Copy-Item (Join-Path $PSScriptRoot 'HorizonVR-Installer.ps1'), (Join-Path $PSScriptRoot 'Install Horizon VR.bat') $stage
 Compress-Archive -Path $stage -DestinationPath (Join-Path $out 'HorizonVR-Installer.zip')
 Write-Host "Made $(Join-Path $out 'HorizonVR-Installer.zip')"
+
