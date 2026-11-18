@@ -132,6 +132,21 @@ struct Screen {
     size: [u32; 2],
     /// The source texture format this swapchain was made for.
     format: wgpu::TextureFormat,
+    /// To wait for the GPU before the swapchain's images go.
+    device: wgpu::Device,
+}
+
+impl Drop for Screen {
+    // Destroying the swapchain frees its images at once, though the GPU may still be drawing into
+    // them from the last frame (a resized window remakes the panel's): the driver then writes
+    // freed memory and crashes. So the textures go first, then the GPU finishes, then the
+    // swapchain (a field, dropped after this).
+    fn drop(&mut self) {
+        self.images.clear();
+        if let Err(e) = self.device.poll(wgpu::PollType::wait_indefinitely()) {
+            log::warn!("Horizon VR: waiting for the GPU before a swapchain goes: {e}");
+        }
+    }
 }
 
 static START: Mutex<Option<Start>> = Mutex::new(None);
@@ -747,6 +762,7 @@ impl Running {
             images,
             size,
             format: source,
+            device: device.clone(),
         })
     }
 }
