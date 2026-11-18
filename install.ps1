@@ -14,7 +14,12 @@ function Need($cmd, $what, $url) {
 }
 Need git 'Git' 'https://git-scm.com/download/win'
 Need cargo 'Rust' 'https://rustup.rs'
-Need java 'JDK 25' 'https://adoptium.net'
+Need javac 'JDK 25' 'https://adoptium.net'
+$javaVersion = (& javac -version 2>&1 | Out-String) -replace '[^0-9.]', ''
+if ([int]($javaVersion.Split('.')[0]) -lt 25) {
+    Write-Host "JDK 25 is needed; javac is version $javaVersion. Install it from https://adoptium.net." -ForegroundColor Red
+    exit 1
+}
 
 if (-not (Test-Path $horizon)) {
     Write-Host 'Downloading Horizon...'

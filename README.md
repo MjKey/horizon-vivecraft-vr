@@ -14,7 +14,9 @@ Minecraft client, using OpenXR. Only the VR code is here, not Horizon itself.
 
 Easiest way, like Vivecraft's installer: download `HorizonVR-Installer.zip` from Releases, unzip it,
 and double-click `Install Horizon VR.bat`. In the window, check the install folder. It finds your Minecraft
-folder and the 26.3 server jar by itself (from the Horizon launcher or the Minecraft Launcher); click **Install**. It needs Minecraft 26.3 played
+folder by itself (the Horizon launcher's or `.minecraft`), and the 26.3 server jar when the
+Horizon launcher downloaded it or it is in Downloads; otherwise download the 26.3 server jar from
+minecraft.net and pick it. Click **Install**. It needs Minecraft 26.3 played
 once in the Minecraft Launcher. It adds a "Horizon VR" shortcut to your desktop. No Git or Rust needed.
 
 The zip is made with `installer/build-release.ps1` from a built Horizon checkout with this port.

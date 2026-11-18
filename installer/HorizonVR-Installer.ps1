@@ -15,14 +15,21 @@ function Find-Minecraft {
     Join-Path $env:APPDATA '.minecraft'
 }
 
-# The 26.3 server jar: the one the Horizon launcher downloaded, else one in Downloads.
+# The pinned 26.3 server jar's SHA-1.
+$serverSha = (Get-Content (Join-Path $here 'files\research-lock.json') -Raw -ErrorAction SilentlyContinue |
+    ConvertFrom-Json).minecraft.server_sha1
+function Is-ServerJar($path) {
+    $serverSha -and (Test-Path -LiteralPath $path -PathType Leaf) -and
+        (Get-FileHash -LiteralPath $path -Algorithm SHA1).Hash -eq $serverSha
+}
+
+# The 26.3 server jar: the one the Horizon launcher downloaded, else a matching one in Downloads.
 function Find-ServerJar {
-    $jar = Join-Path $launcher 'server-jars\26.3.jar'
-    if (Test-Path $jar) { return $jar }
-    $downloads = Join-Path $env:USERPROFILE 'Downloads'
-    $found = Get-ChildItem $downloads -Filter 'server*.jar' -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if ($found) { $found.FullName } else { '' }
+    $candidates = @(Join-Path $launcher 'server-jars\26.3.jar') +
+        @(Get-ChildItem (Join-Path $env:USERPROFILE 'Downloads') -Filter '*.jar' -ErrorAction SilentlyContinue |
+            Where-Object Length -gt 30MB | ForEach-Object FullName)
+    foreach ($jar in $candidates) { if (Is-ServerJar $jar) { return $jar } }
+    ''
 }
 
 if (-not $InstallDir) { $InstallDir = Join-Path $env:LOCALAPPDATA 'HorizonVR' }
@@ -58,10 +65,12 @@ function Install($dest, $mc, $server, $say) {
     if (-not (Test-Path (Join-Path $mc 'versions\26.3\26.3.jar'))) {
         throw 'Minecraft 26.3 is not downloaded in that Minecraft folder. Play 26.3 once in the Horizon launcher or the Minecraft Launcher first.'
     }
-    if (-not $server -or -not (Test-Path $server -PathType Leaf)) {
-        throw 'Choose the Minecraft 26.3 server jar (download it from minecraft.net).'
+    if (-not $server -or -not (Is-ServerJar $server)) {
+        throw 'Choose the Minecraft 26.3 server jar (download it from minecraft.net). Another version does not work.'
     }
-    $dest = [IO.Path]::GetFullPath($dest).TrimEnd('')
+    # No trailing backslash: it would escape the closing quote of a program argument.
+    $dest = [IO.Path]::GetFullPath($dest).TrimEnd('\')
+    $mc = [IO.Path]::GetFullPath($mc).TrimEnd('\')
     if ((Get-Process horizon-client -ErrorAction SilentlyContinue | Where-Object { $_.Path -and (Split-Path $_.Path) -eq $dest })) {
         throw 'Horizon VR is running from that folder. Close it first.'
     }

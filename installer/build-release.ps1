@@ -21,11 +21,10 @@ New-Item -ItemType Directory -Force (Join-Path $files 'crates\horizon-prepare\sr
 Copy-Item (Join-Path $Horizon 'crates\horizon-prepare\src\exporters.rs') (Join-Path $files 'crates\horizon-prepare\src')
 # The compiled exporters: the cache entry whose key matches (made by a prepare in the checkout).
 $prepare = Join-Path $Horizon 'target\fast\horizon-prepare.exe'
-& $prepare compile-exporters --root $Horizon | Out-Null
-if ($LASTEXITCODE) { throw 'compile-exporters failed' }
-$cache = Get-ChildItem (Join-Path $Horizon '.local\exporters') -Directory | Where-Object Name -notlike '.*' |
-    Sort-Object LastWriteTime -Descending | Select-Object -First 1
-Copy-Item -Recurse $cache.FullName (Join-Path $files 'exporters')
+# compile-exporters prints, last, the folder whose key matches this checkout.
+$cache = (& $prepare compile-exporters --root $Horizon | Select-Object -Last 1).Trim()
+if ($LASTEXITCODE -or -not (Test-Path (Join-Path $cache 'manifest.json'))) { throw 'compile-exporters failed' }
+Copy-Item -Recurse $cache (Join-Path $files 'exporters')
 Copy-Item (Join-Path $PSScriptRoot 'Play Horizon VR.bat') $files
 
 Copy-Item (Join-Path $PSScriptRoot 'HorizonVR-Installer.ps1'), (Join-Path $PSScriptRoot 'Install Horizon VR.bat') $stage
