@@ -1,10 +1,114 @@
 # Horizon VR installer: a small window like Vivecraft's. Copies the prebuilt game beside this
 # script to the chosen folder, prepares the game files from your own Minecraft 26.3, and adds a
-# desktop shortcut.
+# desktop shortcut. It finds the Horizon launcher's (or the Minecraft Launcher's) Minecraft 26.3
+# and server jar by itself. `-Silent` installs with what it found, without the window.
+param([switch]$Silent, [string]$InstallDir)
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-[System.Windows.Forms.Application]::EnableVisualStyles()
 $here = $PSScriptRoot
+$launcher = Join-Path $env:APPDATA 'horizon-launcher'
 
+# A Minecraft folder with 26.3 downloaded: the Horizon launcher's first, then the official one.
+function Find-Minecraft {
+    foreach ($d in (Join-Path $launcher 'minecraft'), (Join-Path $env:APPDATA '.minecraft')) {
+        if (Test-Path (Join-Path $d 'versions\26.3\26.3.jar')) { return $d }
+    }
+    Join-Path $env:APPDATA '.minecraft'
+}
+
+# The 26.3 server jar: the one the Horizon launcher downloaded, else one in Downloads.
+function Find-ServerJar {
+    $jar = Join-Path $launcher 'server-jars\26.3.jar'
+    if (Test-Path $jar) { return $jar }
+    $downloads = Join-Path $env:USERPROFILE 'Downloads'
+    $found = Get-ChildItem $downloads -Filter 'server*.jar' -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($found) { $found.FullName } else { '' }
+}
+
+if (-not $InstallDir) { $InstallDir = Join-Path $env:LOCALAPPDATA 'HorizonVR' }
+
+# Runs a program, passing each output line to $say, and returns its exit code.
+function Run($exe, $arguments, $dir, $say) {
+    $out = Join-Path $env:TEMP "horizonvr-$PID.log"
+    $p = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory $dir -NoNewWindow -PassThru `
+        -RedirectStandardOutput $out -RedirectStandardError "$out.err"
+    # Windows PowerShell only keeps ExitCode when the handle was read while the process ran.
+    $null = $p.Handle
+    $shown = 0
+    do {
+        $done = $p.HasExited
+        Start-Sleep -Milliseconds 200
+        $lines = @(Get-Content $out, "$out.err" -ErrorAction SilentlyContinue)
+        for (; $shown -lt $lines.Count; $shown++) { & $say $lines[$shown] }
+    } until ($done)
+    $p.WaitForExit()
+    Remove-Item $out, "$out.err" -ErrorAction SilentlyContinue
+    $p.ExitCode
+}
+
+# The whole install. Throws with a message the player can act on.
+function Install($dest, $mc, $server, $say) {
+    if (-not (Test-Path (Join-Path $here 'files\horizon-client.exe'))) {
+        throw 'The game files are missing. Unzip the whole HorizonVR-Installer.zip and run the installer from the unzipped folder.'
+    }
+    if (-not (Test-Path (Join-Path $mc 'versions\26.3\26.3.jar'))) {
+        throw 'Minecraft 26.3 is not downloaded in that Minecraft folder. Play 26.3 once in the Horizon launcher or the Minecraft Launcher first.'
+    }
+    if (-not $server -or -not (Test-Path $server -PathType Leaf)) {
+        throw 'Choose the Minecraft 26.3 server jar (download it from minecraft.net).'
+    }
+    if ((Get-Process horizon-client -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$dest*" })) {
+        throw 'Horizon VR is running from that folder. Close it first.'
+    }
+
+    & $say "Copying Horizon VR to $dest..."
+    New-Item -ItemType Directory -Force $dest | Out-Null
+    Get-ChildItem (Join-Path $here 'files') | Copy-Item -Destination $dest -Recurse -Force
+
+    # The Minecraft Launcher may rewrite its 26.3 version file; fetch Mojang's own, as the
+    # preparer asks, and check it against the pinned SHA-1.
+    $sha = (Get-Content (Join-Path $dest 'research-lock.json') -Raw | ConvertFrom-Json).minecraft.manifest_sha1
+    $manifest = Join-Path $dest '.local\minecraft\26.3\manifest.json'
+    if (-not (Test-Path $manifest) -or (Get-FileHash $manifest -Algorithm SHA1).Hash -ne $sha) {
+        & $say 'Downloading the Minecraft 26.3 version file from Mojang...'
+        New-Item -ItemType Directory -Force (Split-Path $manifest) | Out-Null
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -UseBasicParsing "https://piston-meta.mojang.com/v1/packages/$sha/26.3.json" -OutFile $manifest
+        if ((Get-FileHash $manifest -Algorithm SHA1).Hash -ne $sha) {
+            Remove-Item $manifest
+            throw 'The downloaded version file did not match.'
+        }
+    }
+
+    & $say 'Preparing the game files from your Minecraft (about a minute)...'
+    $prepare = Join-Path $dest 'horizon-prepare.exe'
+    if ((Run $prepare @('--prepare', '--minecraft-dir', "`"$mc`"", '--server-jar', "`"$server`"") $dest $say) -ne 0) {
+        throw 'Preparing the game files failed (see the log).'
+    }
+    if ((Run $prepare @('sounds', '--minecraft-dir', "`"$mc`"") $dest $say) -ne 0) {
+        & $say 'Sounds were not copied; the game runs without them.'
+    }
+
+    $shell = New-Object -ComObject WScript.Shell
+    $link = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'Horizon VR.lnk'))
+    $link.TargetPath = Join-Path $dest 'Play Horizon VR.bat'
+    $link.WorkingDirectory = $dest
+    $link.IconLocation = Join-Path $dest 'horizon-client.exe'
+    $link.Save()
+    & $say 'Done. Start SteamVR, then open "Horizon VR" on your desktop.'
+}
+
+if ($Silent) {
+    try {
+        Install $InstallDir (Find-Minecraft) (Find-ServerJar) { param($t) Write-Host $t }
+        exit 0
+    } catch {
+        Write-Host "Install failed: $_" -ForegroundColor Red
+        exit 1
+    }
+}
+
+[System.Windows.Forms.Application]::EnableVisualStyles()
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'Horizon VR Installer'
 $form.ClientSize = New-Object System.Drawing.Size(560, 400)
@@ -37,93 +141,32 @@ $pickJar = {
     $d.Filter = 'Server jar (*.jar)|*.jar'
     if ($d.ShowDialog() -eq 'OK') { $t.Text = $d.FileName }
 }
-$installDir = Row 'Install folder' (Join-Path $env:LOCALAPPDATA 'HorizonVR') $pickFolder
-$mcDir = Row 'Minecraft folder (with Minecraft 26.3 installed and played once)' (Join-Path $env:APPDATA '.minecraft') $pickFolder
-$jar = Row 'Minecraft 26.3 server jar (download it from minecraft.net)' '' $pickJar
+$installBox = Row 'Install folder' $InstallDir $pickFolder
+$mcBox = Row 'Minecraft folder with 26.3 (found automatically)' (Find-Minecraft) $pickFolder
+$jarBox = Row 'Minecraft 26.3 server jar (found automatically, or download it from minecraft.net)' (Find-ServerJar) $pickJar
 
 $log = New-Object System.Windows.Forms.TextBox
 $log.Multiline = $true; $log.ReadOnly = $true; $log.ScrollBars = 'Vertical'
 $log.Location = "12,$y"; $log.Size = New-Object System.Drawing.Size(536, 150)
 $form.Controls.Add($log)
 
-$install = New-Object System.Windows.Forms.Button
-$install.Text = 'Install'; $install.Location = "448,$($y + 160)"; $install.Size = New-Object System.Drawing.Size(100, 30)
-$form.Controls.Add($install)
-$form.AcceptButton = $install
+$button = New-Object System.Windows.Forms.Button
+$button.Text = 'Install'; $button.Location = "448,$($y + 160)"; $button.Size = New-Object System.Drawing.Size(100, 30)
+$form.Controls.Add($button)
+$form.AcceptButton = $button
 
-function Say($text) { $log.AppendText("$text`r`n"); [System.Windows.Forms.Application]::DoEvents() }
+$say = { param($t) $log.AppendText("$t`r`n"); [System.Windows.Forms.Application]::DoEvents() }
 
-# Runs a program without freezing the window, showing its last output lines.
-function Run($exe, $arguments, $dir) {
-    $out = Join-Path $env:TEMP "horizonvr-$PID.log"
-    $p = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory $dir -NoNewWindow -PassThru `
-        -RedirectStandardOutput $out -RedirectStandardError "$out.err"
-    $shown = 0
-    while (-not $p.HasExited) {
-        Start-Sleep -Milliseconds 200
-        $lines = @(Get-Content $out, "$out.err" -ErrorAction SilentlyContinue)
-        for (; $shown -lt $lines.Count; $shown++) { Say $lines[$shown] }
-        [System.Windows.Forms.Application]::DoEvents()
-    }
-    $lines = @(Get-Content $out, "$out.err" -ErrorAction SilentlyContinue)
-    for (; $shown -lt $lines.Count; $shown++) { Say $lines[$shown] }
-    $p.ExitCode
-}
-
-$install.Add_Click({
-    $dest = $installDir.Text.Trim()
-    $server = $jar.Text.Trim('" ')
-    if (-not (Test-Path (Join-Path $mcDir.Text 'versions\26.3\26.3.jar'))) {
-        [System.Windows.Forms.MessageBox]::Show('Minecraft 26.3 is not downloaded in that Minecraft folder. Play 26.3 once in the Minecraft Launcher first.') | Out-Null
-        return
-    }
-    if (-not (Test-Path $server -PathType Leaf)) {
-        [System.Windows.Forms.MessageBox]::Show('Choose the Minecraft 26.3 server jar.') | Out-Null
-        return
-    }
-    $install.Enabled = $false
+$button.Add_Click({
+    $button.Enabled = $false
     try {
-        Say "Copying Horizon VR to $dest..."
-        New-Item -ItemType Directory -Force $dest | Out-Null
-        Get-ChildItem (Join-Path $here 'files') | Copy-Item -Destination $dest -Recurse -Force
-
-        # The Minecraft Launcher may rewrite its 26.3 version file; fetch Mojang's own, as the
-        # preparer asks, and check it against the pinned SHA-1.
-        $sha = (Get-Content (Join-Path $dest 'research-lock.json') -Raw | ConvertFrom-Json).minecraft.manifest_sha1
-        $manifest = Join-Path $dest '.local\minecraft\26.3\manifest.json'
-        if (-not (Test-Path $manifest)) {
-            Say 'Downloading the Minecraft 26.3 version file from Mojang...'
-            New-Item -ItemType Directory -Force (Split-Path $manifest) | Out-Null
-            Invoke-WebRequest -UseBasicParsing "https://piston-meta.mojang.com/v1/packages/$sha/26.3.json" -OutFile $manifest
-            if ((Get-FileHash $manifest -Algorithm SHA1).Hash -ne $sha) {
-                Remove-Item $manifest
-                throw 'The downloaded version file did not match.'
-            }
-        }
-
-        Say 'Preparing the game files from your Minecraft (a few minutes)...'
-        $prepare = Join-Path $dest 'horizon-prepare.exe'
-        $mc = $mcDir.Text
-        if ((Run $prepare @('--prepare', '--minecraft-dir', "`"$mc`"", '--server-jar', "`"$server`"") $dest) -ne 0) {
-            throw 'Preparing the game files failed (see above).'
-        }
-        if ((Run $prepare @('sounds', '--minecraft-dir', "`"$mc`"") $dest) -ne 0) {
-            Say 'Sounds were not copied; the game runs without them.'
-        }
-
-        $shell = New-Object -ComObject WScript.Shell
-        $link = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'Horizon VR.lnk'))
-        $link.TargetPath = Join-Path $dest 'Play Horizon VR.bat'
-        $link.WorkingDirectory = $dest
-        $link.IconLocation = Join-Path $dest 'horizon-client.exe'
-        $link.Save()
-        Say 'Done. Start SteamVR, then open "Horizon VR" on your desktop.'
+        Install $installBox.Text.Trim() $mcBox.Text.Trim() $jarBox.Text.Trim('" ') $say
         [System.Windows.Forms.MessageBox]::Show('Horizon VR is installed. Start SteamVR, then open "Horizon VR" on your desktop.') | Out-Null
     } catch {
-        Say "Error: $_"
+        & $say "Error: $_"
         [System.Windows.Forms.MessageBox]::Show("Install failed: $_") | Out-Null
     } finally {
-        $install.Enabled = $true
+        $button.Enabled = $true
     }
 })
 
