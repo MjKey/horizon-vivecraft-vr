@@ -26,6 +26,8 @@ $cache = (& $prepare compile-exporters --root $Horizon | Select-Object -Last 1).
 if ($LASTEXITCODE -or -not (Test-Path (Join-Path $cache 'manifest.json'))) { throw 'compile-exporters failed' }
 Copy-Item -Recurse $cache (Join-Path $files 'exporters')
 Copy-Item (Join-Path $PSScriptRoot 'Play Horizon VR.bat') $files
+# The release's version, which the installer's Update compares with GitHub's latest release tag.
+Copy-Item (Join-Path $PSScriptRoot 'VERSION') (Join-Path $files 'version.txt')
 
 Copy-Item (Join-Path $PSScriptRoot 'HorizonVR-Installer.ps1'), (Join-Path $PSScriptRoot 'Install Horizon VR.bat') $stage
 Compress-Archive -Path $stage -DestinationPath (Join-Path $out 'HorizonVR-Installer.zip')

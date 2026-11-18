@@ -1,4 +1,4 @@
-﻿# Checks each installer bug that was fixed, against an unzipped HorizonVR-Installer.zip.
+# Checks each installer bug that was fixed, against an unzipped HorizonVR-Installer.zip.
 # Run after build-release.ps1. Uses the Horizon launcher's (or .minecraft's) Minecraft 26.3 and
 # server jar on this PC. Installs into a temporary folder; removes the desktop shortcut it makes.
 param([string]$Zip = (Join-Path $PSScriptRoot 'out\HorizonVR-Installer.zip'))
@@ -10,6 +10,7 @@ $installer = Join-Path $work 'HorizonVR-Installer\HorizonVR-Installer.ps1'
 $dest = Join-Path $work 'install dir'
 $shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Horizon VR.lnk'
 $hadShortcut = Test-Path $shortcut
+$hadStartMenu = Test-Path (Join-Path ([Environment]::GetFolderPath('Programs')) 'Horizon VR Installer.lnk')
 $failed = 0
 
 function Check($name, $ok) {
@@ -94,7 +95,7 @@ Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 $gui = Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$installer`"", '-InstallDir', "`"$dest`"" -PassThru
 $root = [Windows.Automation.AutomationElement]::RootElement
 $byPid = [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::ProcessIdProperty, $gui.Id)
-$deadline = (Get-Date).AddSeconds(30)
+$deadline = (Get-Date).AddSeconds(120)
 do { Start-Sleep -Milliseconds 500; $window = $root.FindFirst('Children', $byPid) } until ($window -or (Get-Date) -gt $deadline)
 $byName = [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::NameProperty, 'Install')
 $button = if ($window) { $window.FindFirst('Descendants', $byName) }
@@ -106,14 +107,10 @@ $message = $null
 $deadline = (Get-Date).AddMinutes(5)
 do {
     Start-Sleep 1
-    $dialogs = if ($window) { $window.FindAll('Descendants', [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Text)) }
-    $message = $dialogs | ForEach-Object { $_.Current.Name } | Where-Object { $_ -match 'installed|failed' } | Select-Object -First 1
-    if (-not $message) {
-        $popup = $root.FindFirst('Children', [Windows.Automation.AndCondition]::new($byPid, [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::ControlTypeProperty, [Windows.Automation.ControlType]::Window)))
-        if ($popup -and $popup.Current.Name -eq '') {
-            $message = $popup.FindAll('Descendants', [Windows.Automation.Condition]::TrueCondition) | ForEach-Object { $_.Current.Name } | Where-Object { $_ -match 'installed|failed' } | Select-Object -First 1
-        }
-    }
+    # The result is a message box: one more top-level window of the installer, beside the main one.
+    $message = $root.FindAll('Children', $byPid) | ForEach-Object {
+        $_.FindAll('Descendants', [Windows.Automation.Condition]::TrueCondition) | ForEach-Object { $_.Current.Name }
+    } | Where-Object { $_ -match 'is installed|failed:' } | Select-Object -First 1
 } until ($message -or (Get-Date) -gt $deadline)
 Check "the window's Install button installs ($message)" ($message -match 'is installed')
 Stop-Process $gui -ErrorAction SilentlyContinue
@@ -124,6 +121,45 @@ Set-Content (Join-Path $dest '.local\horizon-client\26.3\broken.txt') 'x'
 $r = Silent @('-Repair', '-InstallDir', $dest)
 Check 'repair restores a broken install' ($r.Code -eq 0 -and (Test-Path (Join-Path $dest 'horizon-client.exe')) -and
     -not (Test-Path (Join-Path $dest '.local\horizon-client\26.3\broken.txt')) -and (Test-Path (Join-Path $dest '.local\horizon-client\26.3')))
+
+# Update: a fake newer release (this zip, as 9.9.9) served the way GitHub's API gives it.
+Check 'install copies the installer and its version' ((Test-Path (Join-Path $dest 'HorizonVR-Installer.ps1')) -and
+    (Test-Path (Join-Path $dest 'Horizon VR Installer.bat')) -and (Test-Path (Join-Path $dest 'version.txt')))
+$serve = Join-Path $work 'serve'
+$newer = Join-Path $work 'newer'
+New-Item -ItemType Directory -Force $serve | Out-Null
+Expand-Archive $Zip $newer
+Set-Content (Join-Path $newer 'HorizonVR-Installer\files\version.txt') '9.9.9'
+Compress-Archive (Join-Path $newer 'HorizonVR-Installer') (Join-Path $serve 'HorizonVR-Installer.zip')
+$port = 18765
+function Write-Release($sha) {
+    @{ tag_name = 'v9.9.9'; assets = @(@{ name = 'HorizonVR-Installer.zip'
+        browser_download_url = "http://127.0.0.1:$port/HorizonVR-Installer.zip"; digest = "sha256:$sha" }) } |
+        ConvertTo-Json -Depth 4 | Set-Content (Join-Path $serve 'latest.json')
+}
+Write-Release ('0' * 64)
+$server = Start-Process python -ArgumentList '-m', 'http.server', $port, '--bind', '127.0.0.1' -WorkingDirectory $serve -PassThru -WindowStyle Hidden
+Start-Sleep 2
+$env:HORIZONVR_RELEASES = "http://127.0.0.1:$port/latest.json"
+$installedCopy = Join-Path $dest 'HorizonVR-Installer.ps1'
+function FromInstall([string[]]$more) {
+    $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $installedCopy -Silent @more 2>&1 | Out-String
+    [pscustomobject]@{ Code = $LASTEXITCODE; Out = $out }
+}
+$r = FromInstall @('-Update')
+Check 'update refuses a download with the wrong checksum' ($r.Code -eq 1 -and $r.Out -match 'checksum' -and
+    (Get-Content (Join-Path $dest 'version.txt')).Trim() -ne '9.9.9')
+Write-Release (Get-FileHash (Join-Path $serve 'HorizonVR-Installer.zip') -Algorithm SHA256).Hash
+$r = FromInstall @('-Update')
+Check 'update installs the newer release' ($r.Code -eq 0 -and (Get-Content (Join-Path $dest 'version.txt')).Trim() -eq '9.9.9')
+$r = FromInstall @('-Update')
+Check 'update says when it is up to date' ($r.Code -eq 0 -and $r.Out -match 'up to date')
+# The installer copy in the install folder installs (repairs) from the latest release by itself.
+Remove-Item (Join-Path $dest 'horizon-prepare.exe')
+$r = FromInstall @()
+Check 'the installed installer reinstalls from the latest release' ($r.Code -eq 0 -and (Test-Path (Join-Path $dest 'horizon-prepare.exe')))
+Stop-Process $server -ErrorAction SilentlyContinue
+Remove-Item Env:HORIZONVR_RELEASES
 
 # Uninstall refuses a folder without Horizon VR in it.
 $r = Silent @('-Uninstall', '-InstallDir', $alone)
@@ -137,11 +173,12 @@ $r = Silent @('-Uninstall', '-InstallDir', $dest)
 # The game itself also writes settings here (config, horizon-graphics.txt): the player's too.
 $left = @(Get-ChildItem $dest -Force | ForEach-Object Name | Sort-Object)
 $shipped = 'horizon-client.exe', 'horizon-prepare.exe', 'openxr_loader.dll', 'research-lock.json', 'LICENSE.txt',
-    'Play Horizon VR.bat', 'exporters', 'mods', 'crates', '.local', '.horizon-cache'
+    'Play Horizon VR.bat', 'exporters', 'mods', 'crates', '.local', '.horizon-cache', 'version.txt',
+    'HorizonVR-Installer.ps1', 'Horizon VR Installer.bat'
 Check "uninstall keeps only the player's files ($($left -join ','))" ($r.Code -eq 0 -and
     'options.txt' -in $left -and 'saves' -in $left -and -not ($left | Where-Object { $_ -in $shipped }))
 Check 'uninstall keeps the world' ((Get-Content (Join-Path $dest 'saves\My World\level.dat')) -eq 'world')
-Check 'uninstall removes the shortcut' (-not (Test-Path $shortcut))
+Check 'uninstall removes the shortcuts' (-not (Test-Path $shortcut) -and -not (Test-Path $startMenuLink))
 
 # Uninstall of a folder with nothing of the player's removes the folder too.
 $r = Silent @('-InstallDir', $dest)
@@ -150,7 +187,9 @@ $r = Silent @('-Uninstall', '-InstallDir', $dest)
 Check 'uninstall removes an empty install folder' ($r.Code -eq 0 -and -not (Test-Path $dest))
 
 if (-not $hadShortcut) { Remove-Item $shortcut -ErrorAction SilentlyContinue }
+if (-not $hadStartMenu) { Remove-Item $startMenuLink -ErrorAction SilentlyContinue }
 Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 if ($failed) { Write-Host "$failed check(s) failed" -ForegroundColor Red; exit 1 }
 Write-Host 'All checks passed' -ForegroundColor Green
+
 

@@ -20,7 +20,10 @@ of [VivecraftMod](https://github.com/Vivecraft/VivecraftMod) using OpenXR (Steam
 3. Check the three paths (install folder, Minecraft folder, server jar) and click **Install**.
 4. Start SteamVR, then open **Horizon VR** on your desktop.
 
-Something broke? Run the installer again and click **Repair**: it reinstalls the game and prepares the
+To update, open **Horizon VR Installer** from the Start menu: it shows when a new version is out, and
+**Update** downloads and installs it (the installer updates itself too).
+
+Something broke? Open it and click **Repair**: it reinstalls the game and prepares the
 Minecraft files again. **Uninstall** removes Horizon VR and its shortcut, and keeps your worlds and
 settings.
 
