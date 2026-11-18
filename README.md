@@ -1,5 +1,8 @@
 # Horizon Vivecraft VR
 
+[![Bitcoin](https://img.shields.io/badge/Bitcoin-donate-F7931A?logo=bitcoin&logoColor=white)](#donate)
+[![Solana](https://img.shields.io/badge/Solana-donate-9945FF?logo=solana&logoColor=white)](#donate)
+
 A port of [VivecraftMod](https://github.com/Vivecraft/VivecraftMod) (LGPL-3.0) to the Horizon
 Minecraft client, using OpenXR. Only the VR code is here, not Horizon itself.
 
@@ -47,9 +50,6 @@ LGPL-3.0, as Vivecraft. See `LICENSE.md`. The ported code credits the Vivecraft 
 came from.
 
 ## Donate
-
-[![Bitcoin](https://img.shields.io/badge/Bitcoin-donate-F7931A?logo=bitcoin&logoColor=white)](#donate)
-[![Solana](https://img.shields.io/badge/Solana-donate-9945FF?logo=solana&logoColor=white)](#donate)
 
 Bitcoin:
 
