@@ -12,6 +12,8 @@ $shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Horizon VR.lnk'
 $hadShortcut = Test-Path $shortcut
 $hadStartMenu = Test-Path (Join-Path ([Environment]::GetFolderPath('Programs')) 'Horizon VR Installer.lnk')
 $failed = 0
+# Leave the player's Horizon launcher alone (its instance is checked by hand).
+$env:HORIZONVR_LAUNCHER = Join-Path $work 'no-launcher.exe'
 
 function Check($name, $ok) {
     if ($ok) { Write-Host "PASS  $name" -ForegroundColor Green }
@@ -195,6 +197,7 @@ Check 'uninstall removes an empty install folder' ($r.Code -eq 0 -and -not (Test
 if (-not $hadShortcut) { Remove-Item $shortcut -ErrorAction SilentlyContinue }
 if (-not $hadStartMenu) { Remove-Item $startMenuLink -ErrorAction SilentlyContinue }
 Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
+Remove-Item Env:HORIZONVR_LAUNCHER, Env:HORIZONVR_RELEASES -ErrorAction SilentlyContinue
 if ($failed) { Write-Host "$failed check(s) failed" -ForegroundColor Red; exit 1 }
 Write-Host 'All checks passed' -ForegroundColor Green
 

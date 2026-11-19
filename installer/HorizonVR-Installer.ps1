@@ -255,7 +255,45 @@ function Install($dest, $mc, $server, $say, $src = $here) {
     $link.WorkingDirectory = $dest
     $link.IconLocation = Join-Path $dest 'horizon-client.exe'
     $link.Save()
-    & $say 'Done. Start SteamVR, then open "Horizon VR" on your desktop.'
+    try { Add-LauncherInstance $dest $say } catch { & $say "The Horizon launcher instance was not set up: $_" }
+    & $say 'Done. Start SteamVR, then open "Horizon VR" on your desktop (or the Horizon VR instance in the Horizon launcher).'
+}
+
+# A "Horizon VR" instance in the Horizon launcher: the game imported (`import-build`) on the
+# launcher version it was built on (horizon-base.txt), so it plays with the launcher's account.
+# HORIZONVR_LAUNCHER points the tests away from the player's launcher.
+$launcherExe = if ($env:HORIZONVR_LAUNCHER) { $env:HORIZONVR_LAUNCHER } else {
+    Join-Path $env:LOCALAPPDATA 'Programs\Horizon Launcher\horizon-launcher.exe'
+}
+function Add-LauncherInstance($dest, $say) {
+    $base = Join-Path $dest 'horizon-base.txt'
+    if (-not (Test-Path $launcherExe) -or -not (Test-Path $base)) { return }
+    $base = (Get-Content $base -Raw).Trim()
+    $versions = Join-Path $launcher 'versions'
+    $hz = { param([string[]]$a, $what) if ((Run $launcherExe $a $dest $say) -ne 0) { throw "$what failed (see the log)." } }
+    $selected = ((& $launcherExe settings --json | Out-String) | ConvertFrom-Json).selected_version
+    & $say "Adding the Horizon VR instance to the Horizon launcher (on $base)..."
+    if (-not (Test-Path (Join-Path $versions $base))) { & $hz @('install', $base) "Installing $base" }
+    try {
+    & $hz @('import-build', "`"$(Join-Path $dest 'horizon-client.exe')`"", '--version', $base, '--trust-unsigned') 'Importing the game'
+    # import-build selects the version it made (the same one again for the same game).
+    $new = ((& $launcherExe settings --json | Out-String) | ConvertFrom-Json).selected_version
+    if ($new -notlike 'imported-*') { throw 'the imported version was not found.' }
+    Copy-Item (Join-Path $dest 'openxr_loader.dll') (Join-Path $versions $new) -Force
+    & $hz @('prepare', '--version', $new) 'Preparing the game files'
+    $old = $null
+    $list = (& $launcherExe instance list --json | Out-String) | ConvertFrom-Json
+    $mine = $list | Where-Object id -eq 'horizon-vr'
+    if ($mine) { $old = $mine.version } else { & $hz @('instance', 'create', '"Horizon VR"') 'Making the instance' }
+    & $hz @('instance', 'version', 'horizon-vr', $new) 'Choosing the version'
+    & $hz @('instance', 'launch', 'horizon-vr', '--env', 'HORIZON_VR=1') 'Turning VR on'
+    $null = Run $launcherExe @('instance', 'icon', 'horizon-vr', 'ender_eye') $dest $say
+    } finally {
+        # import-build selects what it imports: the player's own choice comes back.
+        if ($selected) { $null = Run $launcherExe @('settings', 'selected-version', $selected) $dest $say }
+    }
+    # The version an update replaced; nothing else plays it.
+    if ($old -like 'imported-*' -and $old -ne $new) { $null = Run $launcherExe @('remove', $old) $dest $say }
 }
 
 # Dot-sourced (by the tests): only define the functions.

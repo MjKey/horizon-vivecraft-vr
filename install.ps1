@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 $horizon = Join-Path $here 'horizon'
 # The Horizon commit the patch was made against.
-$commit = 'c07bfa7'
+$commit = '6d765e0'
 
 function Need($cmd, $what, $url) {
     if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {

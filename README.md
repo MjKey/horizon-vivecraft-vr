@@ -20,6 +20,11 @@ of [VivecraftMod](https://github.com/Vivecraft/VivecraftMod) using OpenXR (Steam
 3. Check the three paths (install folder, Minecraft folder, server jar) and click **Install**.
 4. Start SteamVR, then open **Horizon VR** on your desktop.
 
+With the [Horizon launcher](https://github.com/horizon-rust/horizon) installed, the installer also
+adds a **Horizon VR** instance to it: start SteamVR, then pick Horizon VR in the launcher and click
+Play. It plays with the launcher's Microsoft account. The instance stays on the Horizon nightly the
+mod is built on (the launcher downloads it if needed); your other instances are untouched.
+
 Pause menu: hold **Y** on the left controller. A short tap of Y opens the inventory.
 
 When a new version is out, Horizon VR asks when you start it: **Yes** updates now, **No** asks again next time. You can also open **Horizon VR Installer** from the Start menu: it shows when a new version is out, and
@@ -49,7 +54,7 @@ other players' VR bodies, and full-body trackers. Please report bugs in
 
 You need [Git](https://git-scm.com/download/win), [Rust](https://rustup.rs) and
 [JDK 25](https://adoptium.net). Download this repo and run `Install.bat`. It clones Horizon at
-commit `c07bfa7`, adds the VR code, applies `horizon-hooks.patch`, builds the game and prepares the
+commit `6d765e0` (Horizon nightly 2026-11-18), adds the VR code, applies `horizon-hooks.patch`, builds the game and prepares the
 game files.
 
 | Path | What it holds |

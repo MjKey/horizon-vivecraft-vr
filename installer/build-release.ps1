@@ -1,6 +1,7 @@
 ﻿# Makes HorizonVR-Installer.zip: the prebuilt game (from a Horizon checkout with the VR port,
 # built with `cargo build --profile fast -p horizon-game`) and the installer window.
-param([string]$Horizon = (Join-Path $PSScriptRoot '..\..\horizon'))
+# The checkout is at HORIZON_BASE's commit (the Horizon launcher version the game plays on).
+param([string]$Horizon = (Join-Path $PSScriptRoot '..\..\hz-nightly'))
 $ErrorActionPreference = 'Stop'
 # Each release needs a higher VERSION than the latest one on GitHub, or the installers already out
 # there won't see it as an update.
@@ -39,6 +40,8 @@ Copy-Item -Recurse $cache (Join-Path $files 'exporters')
 Copy-Item (Join-Path $PSScriptRoot 'Play Horizon VR.bat') $files
 # The release's version, which the installer's Update compares with GitHub's latest release tag.
 Copy-Item (Join-Path $PSScriptRoot 'VERSION') (Join-Path $files 'version.txt')
+# The Horizon launcher version this game is built on: the installer imports the game on it.
+Copy-Item (Join-Path $PSScriptRoot 'HORIZON_BASE') (Join-Path $files 'horizon-base.txt')
 
 Copy-Item (Join-Path $PSScriptRoot 'HorizonVR-Installer.ps1'), (Join-Path $PSScriptRoot 'Install Horizon VR.bat') $stage
 Compress-Archive -Path $stage -DestinationPath (Join-Path $out 'HorizonVR-Installer.zip')
