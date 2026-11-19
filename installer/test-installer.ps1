@@ -112,7 +112,7 @@ do {
         $_.FindAll('Descendants', [Windows.Automation.Condition]::TrueCondition) | ForEach-Object { $_.Current.Name }
     } | Where-Object { $_ -match 'is installed|failed:' } | Select-Object -First 1
 } until ($message -or (Get-Date) -gt $deadline)
-Check "the window's Install button installs ($message)" ($message -match 'is installed')
+Check "the window's Install button installs (window $([bool]$window), button $([bool]$button): $message)" ($message -match 'is installed')
 Stop-Process $gui -ErrorAction SilentlyContinue
 
 # Repair: a broken install (game deleted, prepared files damaged) comes back whole.
@@ -153,7 +153,7 @@ Write-Release (Get-FileHash (Join-Path $serve 'HorizonVR-Installer.zip') -Algori
 $r = FromInstall @('-Update')
 Check 'update installs the newer release' ($r.Code -eq 0 -and (Get-Content (Join-Path $dest 'version.txt')).Trim() -eq '9.9.9')
 $r = FromInstall @('-Update')
-Check 'update says when it is up to date' ($r.Code -eq 0 -and $r.Out -match 'up to date')
+Check "update says when it is up to date ($($r.Code): $($r.Out.Trim()))" ($r.Code -eq 0 -and $r.Out -match 'up to date')
 # The installer copy in the install folder installs (repairs) from the latest release by itself.
 Remove-Item (Join-Path $dest 'horizon-prepare.exe')
 $r = FromInstall @()
