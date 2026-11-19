@@ -80,7 +80,7 @@ fn store(address: &str, args: &[f32], now: Instant) {
             _ => return,
         },
     };
-    let Some(v) = args.get(..3).map(|a| [a[0], a[1], a[2]]) else {
+    let Some(v) = args.get(..3).map(|a| [a[0], a[1], a[2]]).filter(|v| v.iter().all(|x| x.is_finite())) else {
         return;
     };
     let mut t = TRACKERS.lock().unwrap_or_else(|e| e.into_inner());

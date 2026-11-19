@@ -565,6 +565,9 @@ impl Running {
                             }
                             self.session.end().map_err(|e| e.to_string())?;
                             self.active = false;
+                            // No frames run until the next session: don't leave the last poses and buttons up.
+                            *POSES.lock().unwrap_or_else(|e| e.into_inner()) = None;
+                            *PAD.lock().unwrap_or_else(|e| e.into_inner()) = None;
                         }
                         xr::SessionState::EXITING | xr::SessionState::LOSS_PENDING => {
                             return Err("the runtime ended the session".into());
@@ -1979,6 +1982,10 @@ impl Running {
                     right_stick: b(6),
                 })
             });
+        if pad.is_none() {
+            // Unfocused: forget a held Y, or coming back would pause at once.
+            *HOLD_Y.lock().unwrap_or_else(|e| e.into_inner()) = HoldY { since: None, tap_until: None };
+        }
         // `reverseHands`: the left controller is the main one; every binding moves with its hand.
         let pad = pad.map(|p| {
             if !reversed() {

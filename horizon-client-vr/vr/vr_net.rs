@@ -185,8 +185,12 @@ impl Reader<'_> {
     fn pose(&mut self) -> Option<NetPose> {
         let position = glam::Vec3::new(self.f32()?, self.f32()?, self.f32()?);
         let w = self.f32()?;
-        let orientation = glam::Quat::from_xyzw(self.f32()?, self.f32()?, self.f32()?, w).normalize();
-        Some(NetPose { position, orientation })
+        let q = glam::Quat::from_xyzw(self.f32()?, self.f32()?, self.f32()?, w);
+        // Untrusted: a zero or non-finite quaternion would normalize to NaN.
+        if !position.is_finite() || !q.is_finite() || q.length_squared() < 1e-6 {
+            return None;
+        }
+        Some(NetPose { position, orientation: q.normalize() })
     }
     /// `VrPlayerState.deserialize(buffer, bytes_after)`.
     fn state(&mut self, bytes_after: usize) -> Option<NetVrPlayer> {
@@ -223,12 +227,14 @@ fn receive(net: &mut Net, data: &[u8]) -> Option<String> {
         }
         id::REQUESTDATA => net.wants_data = true,
         id::CLIMBING => {
-            net.allows_climbey = r.bool()?;
-            net.climb_mode = r.u8().unwrap_or(0);
-            net.climb_blocks.clear();
+            // Parse it all first, so a truncated packet leaves the old rules as they were.
+            let allows = r.bool()?;
+            let mode = r.u8().unwrap_or(0);
+            let mut blocks = Vec::new();
             while !r.0.is_empty() {
-                net.climb_blocks.push(r.utf()?);
+                blocks.push(r.utf()?);
             }
+            (net.allows_climbey, net.climb_mode, net.climb_blocks) = (allows, mode, blocks);
         }
         id::TELEPORT => {
             net.supports_direct_teleport = true;
@@ -239,6 +245,13 @@ fn receive(net: &mut Net, data: &[u8]) -> Option<String> {
             let mut p = r.state(8)?;
             p.world_scale = r.f32()?;
             p.height_scale = r.f32()?;
+            if !(p.world_scale.is_finite() && p.height_scale.is_finite()) {
+                return None;
+            }
+            // shortcut: caps players a server never marks inactive, a TTL if servers leak many.
+            if net.players.len() >= 512 && !net.players.contains_key(&uuid) {
+                return None;
+            }
             net.players.insert(uuid, p);
         }
         id::CRAWL => net.allows_crawl = r.bool().unwrap_or(true),
@@ -549,5 +562,20 @@ mod tests {
         receive(&mut n, &b);
         let p = n.players[&7];
         assert!(p.left_handed && p.world_scale == 2.0 && (p.hmd.position.y - 1.6).abs() < 1e-6);
+        // A truncated climbing packet keeps the old rules.
+        receive(&mut n, &[id::CLIMBING, 0, 2, 5, b'a']);
+        assert!(n.allows_climbey && n.climb_mode == 1 && n.climb_blocks == ["stone"]);
+        // A zero quaternion (it would normalize to NaN) drops the packet.
+        let zero = NetPose { orientation: glam::Quat::from_xyzw(0.0, 0.0, 0.0, 0.0), ..pose };
+        let mut bad = vec![id::UBERPACKET];
+        bad.extend_from_slice(&8u128.to_be_bytes());
+        for (hand, p) in [(0, zero), (1, pose), (1, pose)] {
+            bad.push(hand);
+            put_pose(&mut bad, p);
+        }
+        put_f32(&mut bad, 1.0);
+        put_f32(&mut bad, 1.0);
+        receive(&mut n, &bad);
+        assert!(!n.players.contains_key(&8));
     }
 }
