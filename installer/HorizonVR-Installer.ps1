@@ -4,7 +4,7 @@
 # and server jar by itself. `-Silent` installs with what it found, without the window. Install
 # also copies this installer into the install folder (a Start menu shortcut opens it), where its
 # Update button fetches the latest release from GitHub and updates the game and itself.
-param([switch]$Silent, [switch]$Repair, [switch]$Uninstall, [switch]$Update, [string]$InstallDir,
+param([switch]$Silent, [switch]$Repair, [switch]$Uninstall, [switch]$Update, [switch]$Check, [string]$InstallDir,
     [string]$MinecraftDir, [string]$ServerJar)
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 $here = $PSScriptRoot
@@ -260,6 +260,23 @@ function Install($dest, $mc, $server, $say, $src = $here) {
 
 # Dot-sourced (by the tests): only define the functions.
 if ($MyInvocation.InvocationName -eq '.') { return }
+
+# `-Check` (Play Horizon VR.bat, before the game starts): asks to update when a newer release is out.
+if ($Check) {
+    try { $have = Read-Version (Join-Path $InstallDir 'version.txt'); $latest = Get-Latest } catch { exit 0 }
+    if (-not $have -or $latest.Version -le $have) { exit 0 }
+    $answer = [System.Windows.Forms.MessageBox]::Show(
+        "Horizon VR $($latest.Version) is out (you have $have).`n`nYes: update now`nNo: later",
+        'Horizon VR update', 'YesNo', 'Information')
+    if ($answer -ne 'Yes') { exit 0 }
+    try {
+        $null = Update $InstallDir (Find-Minecraft) (Find-ServerJar) { param($t) Write-Host $t }
+        [System.Windows.Forms.MessageBox]::Show("Horizon VR is updated to $($latest.Version).") | Out-Null
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show("Update failed: $_`n`nThe game starts as it is; try Update in Horizon VR Installer later.") | Out-Null
+    }
+    exit 0
+}
 
 if ($Silent) {
     if (-not $MinecraftDir) { $MinecraftDir = Find-Minecraft }

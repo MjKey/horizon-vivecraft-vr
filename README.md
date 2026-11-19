@@ -22,7 +22,7 @@ of [VivecraftMod](https://github.com/Vivecraft/VivecraftMod) using OpenXR (Steam
 
 Pause menu: hold **Y** on the left controller. A short tap of Y opens the inventory.
 
-To update, open **Horizon VR Installer** from the Start menu: it shows when a new version is out, and
+When a new version is out, Horizon VR asks when you start it: **Yes** updates now, **No** asks again next time. You can also open **Horizon VR Installer** from the Start menu: it shows when a new version is out, and
 **Update** downloads and installs it (the installer updates itself too).
 
 Something broke? Open it and click **Repair**: it reinstalls the game and prepares the

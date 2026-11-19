@@ -154,6 +154,12 @@ $r = FromInstall @('-Update')
 Check 'update installs the newer release' ($r.Code -eq 0 -and (Get-Content (Join-Path $dest 'version.txt')).Trim() -eq '9.9.9')
 $r = FromInstall @('-Update')
 Check "update says when it is up to date ($($r.Code): $($r.Out.Trim()))" ($r.Code -eq 0 -and $r.Out -match 'up to date')
+$r = FromInstall @('-Check')
+Check 'the start check stays quiet when up to date' ($r.Code -eq 0 -and -not $r.Out.Trim())
+$env:HORIZONVR_RELEASES = 'http://127.0.0.1:1/latest.json'
+$r = FromInstall @('-Check')
+Check 'the start check stays quiet offline' ($r.Code -eq 0)
+$env:HORIZONVR_RELEASES = "http://127.0.0.1:$port/latest.json"
 # The installer copy in the install folder installs (repairs) from the latest release by itself.
 Remove-Item (Join-Path $dest 'horizon-prepare.exe')
 $r = FromInstall @()
