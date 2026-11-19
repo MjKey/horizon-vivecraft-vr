@@ -147,6 +147,7 @@ function Uninstall($dest, $say) {
         $path = Join-Path $dest $name
         if ((Test-Path -LiteralPath $path) -and -not (Get-ChildItem -LiteralPath $path -Force)) { Remove-Item -LiteralPath $path }
     }
+    try { Remove-LauncherInstance $dest $say } catch { & $say "The Horizon launcher instance was not removed: $_" }
     foreach ($link in (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Horizon VR.lnk'), $startMenuLink) {
         if (Test-Path -LiteralPath $link) { Remove-Item -LiteralPath $link }
     }
@@ -305,6 +306,17 @@ function Add-LauncherInstance($dest, $say) {
     }
     # The version an update replaced; nothing else plays it.
     if ($old -like 'imported-*' -and $old -ne $new) { $null = Run $launcherExe @('remove', $old) $dest $say }
+}
+
+# Takes the Horizon VR instance out of the launcher (its folder goes to the Trash, worlds
+# recoverable) and the imported version it played.
+function Remove-LauncherInstance($dest, $say) {
+    if (-not (Test-Path $launcherExe)) { return }
+    $mine = ((& $launcherExe instance list --json | Out-String) | ConvertFrom-Json) | Where-Object id -eq 'horizon-vr'
+    if (-not $mine) { return }
+    & $say 'Removing the Horizon VR instance from the Horizon launcher...'
+    if ((Run $launcherExe @('instance', 'delete', 'horizon-vr') $dest $say) -ne 0) { throw 'deleting it failed (see the log).' }
+    if ($mine.version -like 'imported-*') { $null = Run $launcherExe @('remove', $mine.version) $dest $say }
 }
 
 # Dot-sourced (by the tests): only define the functions.
