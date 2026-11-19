@@ -1113,7 +1113,7 @@ index 026382e953..b243c0162f 100644
 +    state
 +}
 diff --git a/crates/horizon-client/src/game/interface/pad_menu.rs b/crates/horizon-client/src/game/interface/pad_menu.rs
-index df497fd3ec..f9eba7d6ed 100644
+index df497fd3ec..cecd86a6dd 100644
 --- a/crates/horizon-client/src/game/interface/pad_menu.rs
 +++ b/crates/horizon-client/src/game/interface/pad_menu.rs
 @@ -2100,7 +2100,8 @@ impl Game<'_> {
@@ -1126,7 +1126,7 @@ index df497fd3ec..f9eba7d6ed 100644
              menu.open_polls,
              !self.prompt_open()
                  && ((self.screen == Screen::Chat && !self.ui.in_bed_chat)
-@@ -2489,3 +2490,44 @@ mod tests {
+@@ -2489,3 +2490,53 @@ mod tests {
          assert!(!field_at(&[], (5.0, 5.0)));
      }
  }
@@ -1167,6 +1167,15 @@ index df497fd3ec..f9eba7d6ed 100644
 +        for (k, right) in [(0, false), (1, true)] {
 +            if now[k] != was[k] {
 +                self.pad_pointer_button(event_loop, right, now[k]);
++                // The trigger on a text field (world name, search boxes) opens the
++                // on-screen keyboard, as the pad's A does: the controllers have no keys.
++                if !right
++                    && now[k]
++                    && self.pad.menu.osk.is_none()
++                    && field_at(&self.pad_targets(), self.cursor)
++                {
++                    self.pad_open_keyboard();
++                }
 +            }
 +        }
 +    }

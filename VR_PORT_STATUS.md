@@ -91,3 +91,5 @@ enough to fix them.
 - 2026-11-19: **Mods** button (9th) on the radial ring opens Horizon's Extras page: fullbright, zoom, FPS counter and the PvP HUD coordinates, each a toggle. Fullbright is no longer held off on multiplayer servers (`fullbright_held` in `interface/options.rs`, in `horizon-hooks.patch`). Built; not headset-tested.
 
 - 2026-11-19: new world no longer black: the room is placed again on each join (`VrPlayer.joined`), it stayed where the last world left it. Pre-launch `-Check` copies Horizon's zoom.hnmod into the VR instance. Sitting players: use Seated Mode (roomscale sneak/crawl read a low head as crouching).
+
+- 2026-11-19: the trigger on any text field (world name, mod search, inventory search) opens Horizon's on-screen keyboard (`vr_gui_frame` in `pad_menu.rs`, in the patch).
