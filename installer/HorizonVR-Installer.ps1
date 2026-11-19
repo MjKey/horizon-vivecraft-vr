@@ -346,6 +346,20 @@ if ($MyInvocation.InvocationName -eq '.') { return }
 
 # `-Check` (Play Horizon VR.bat, before the game starts): asks to update when a newer release is out.
 if ($Check) {
+    # Before each start: Horizon's Zoom mod into the VR instance (its own game folder has none),
+    # from the player's main Horizon folder, on (`mod.zoom`) unless they turned it off.
+    try {
+        $hzHome = Join-Path $env:APPDATA 'horizon'
+        $vr = Join-Path $hzHome 'instances\horizon-vr'
+        $zoom = Join-Path $hzHome 'horizon-native-mods\zoom.hnmod'
+        $mods = Join-Path $vr 'horizon-native-mods'
+        if ((Test-Path $vr) -and (Test-Path $zoom) -and -not (Test-Path (Join-Path $mods 'zoom.hnmod'))) {
+            New-Item -ItemType Directory -Force $mods | Out-Null
+            Copy-Item $zoom $mods
+            $list = Join-Path $vr 'horizon-mods.txt'
+            if (-not ((Test-Path $list) -and (Select-String -Quiet 'mod.zoom:' $list))) { Add-Content $list 'mod.zoom:true' -Encoding ascii }
+        }
+    } catch {}
     try { $have = Read-Version (Join-Path $InstallDir 'version.txt'); $latest = Get-Latest } catch { exit 0 }
     if (-not $have -or $latest.Version -le $have) { exit 0 }
     $answer = [System.Windows.Forms.MessageBox]::Show(

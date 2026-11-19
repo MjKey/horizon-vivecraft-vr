@@ -165,6 +165,9 @@ pub(super) struct VrPlayer {
     vehicle_yaw: Option<f32>,
     /// The room was placed under the player (`snapRoomOriginToPlayerEntity` at the first tick).
     pub placed: bool,
+    /// The local player's join the room was placed for: a new world (or respawn) places it again,
+    /// or the room stays where the last world left it (inside blocks: a black view).
+    joined: horizon_client::join_seq::JoinSeq,
     /// The right stick was pushed past the snap threshold (`keyRotateAxis.consumeClick`).
     snapped: bool,
     /// `roomScaleMovementDelay`.
@@ -194,6 +197,7 @@ impl VrPlayer {
             vehicle_yaw: None,
             world_scale: 1.0,
             placed: false,
+            joined: Default::default(),
             snapped: false,
             room_scale_movement_delay: 0,
             pre: None,
@@ -313,11 +317,13 @@ impl Game<'_> {
             return;
         };
         let player_yaw = self.yaw;
+        let joined = self.resident_entities.local_player.join();
         let world_scale = super::vr_settings::vr_settings().world_scale;
         let mut guard = vr_player();
         let vr = guard.get_or_insert_with(VrPlayer::new);
         vr.world_scale = world_scale;
-        if !vr.placed {
+        if !vr.placed || vr.joined != joined {
+            vr.joined = joined;
             // The headset faces the player's yaw: the room turns by the difference.
             let room_yaw = yaw_of(poses.hmd.direction());
             vr.world_rotation = wrap_degrees(room_yaw - player_yaw);
