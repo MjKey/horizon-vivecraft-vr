@@ -198,6 +198,23 @@ function Install($dest, $mc, $server, $say, $src = $here) {
     $dest = Full-Path $dest
     $mc = Full-Path $mc
     $server = "$server".Trim('" ')
+    # Already installed (this version, game files prepared): nothing to copy or prepare again.
+    # Only a missing launcher instance is added. Repair removes .local first, so it still runs.
+    $want = Read-Version (Join-Path $src 'files\version.txt')
+    if ($want -and $want -eq (Read-Version (Join-Path $dest 'version.txt')) -and
+        (Test-Path -LiteralPath (Join-Path $dest 'horizon-client.exe')) -and
+        (Test-Path -LiteralPath (Join-Path $dest '.local\horizon-client\26.3'))) {
+        $hasInstance = $true
+        if (Test-Path $launcherExe) {
+            $list = (& $launcherExe instance list --json | Out-String) | ConvertFrom-Json
+            $hasInstance = [bool]($list | Where-Object id -eq 'horizon-vr')
+        }
+        if (-not $hasInstance) {
+            try { Add-LauncherInstance $dest $say } catch { & $say "The Horizon launcher instance was not set up: $_" }
+        }
+        & $say "Horizon VR $want is already installed in $dest. (Use Repair to install it again.)"
+        return
+    }
     if (-not (Test-Path (Join-Path $src 'files\horizon-client.exe'))) {
         if (-not (Test-Path (Join-Path $here 'horizon-client.exe'))) {
             throw 'The game files are missing. Unzip the whole HorizonVR-Installer.zip and run the installer from the unzipped folder.'
