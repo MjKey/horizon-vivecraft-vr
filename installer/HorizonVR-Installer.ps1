@@ -200,7 +200,9 @@ function Install($dest, $mc, $server, $say, $src = $here) {
     $server = "$server".Trim('" ')
     # Already installed (this version, game files prepared): nothing to copy or prepare again.
     # Only a missing launcher instance is added. Repair removes .local first, so it still runs.
-    $want = Read-Version (Join-Path $src 'files\version.txt')
+    # The copy in an install folder has no files\ beside it: its own folder's version.
+    $want = @((Join-Path $src 'files\version.txt'), (Join-Path $src 'version.txt')) |
+        ForEach-Object { Read-Version $_ } | Where-Object { $_ } | Select-Object -First 1
     if ($want -and $want -eq (Read-Version (Join-Path $dest 'version.txt')) -and
         (Test-Path -LiteralPath (Join-Path $dest 'horizon-client.exe')) -and
         (Test-Path -LiteralPath (Join-Path $dest '.local\horizon-client\26.3'))) {
