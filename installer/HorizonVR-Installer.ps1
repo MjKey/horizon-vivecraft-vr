@@ -31,6 +31,8 @@ function Is-ServerJar($path) {
 # The 26.3 server jar: the one the Horizon launcher downloaded, else a matching one in Downloads.
 function Find-ServerJar {
     $candidates = @(Join-Path $launcher 'server-jars\26.3.jar') +
+        @(Get-ChildItem (Join-Path $launcher 'versions\*\.local\minecraft\26.3\jars\server.jar') -ErrorAction SilentlyContinue |
+            ForEach-Object FullName) +
         @(Get-ChildItem (Join-Path $env:USERPROFILE 'Downloads') -Filter '*.jar' -ErrorAction SilentlyContinue |
             Where-Object Length -gt 30MB | ForEach-Object FullName)
     foreach ($jar in $candidates) { if (Is-ServerJar $jar) { return $jar } }
@@ -202,6 +204,23 @@ function Install($dest, $mc, $server, $say, $src = $here) {
     }
     if (-not (Test-Path (Join-Path $mc 'versions\26.3\26.3.jar'))) {
         throw 'Minecraft 26.3 is not downloaded in that Minecraft folder. Play 26.3 once in the Horizon launcher or the Minecraft Launcher first.'
+    }
+    # The pinned hash from the release itself, when this script had no lock beside it.
+    if (-not $script:serverSha) { $script:serverSha = (Get-Content (Join-Path $src 'files\research-lock.json') -Raw | ConvertFrom-Json).minecraft.server_sha1 }
+    if (-not $server) { $server = Find-ServerJar }
+    $baseFile = @((Join-Path $src 'files\horizon-base.txt'), (Join-Path $src 'horizon-base.txt')) |
+        Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ((-not $server -or -not (Is-ServerJar $server)) -and $baseFile -and (Test-Path $launcherExe)) {
+        # No jar yet: the launcher installs and prepares the nightly this build is on, which
+        # downloads it (and the version then plays in the launcher too).
+        $base = (Get-Content $baseFile -Raw).Trim()
+        if (-not (Test-Path (Join-Path $launcher "versions\$base"))) {
+            & $say "Installing Horizon $base in the Horizon launcher..."
+            $null = Run $launcherExe @('install', $base) $dest $say
+        }
+        & $say "Preparing Horizon $base in the Horizon launcher (a few minutes)..."
+        $null = Run $launcherExe @('prepare', '--version', $base) $dest $say
+        $server = Find-ServerJar
     }
     if (-not $server -or -not (Is-ServerJar $server)) {
         throw 'Choose the Minecraft 26.3 server jar (download it from minecraft.net). Another version does not work.'
