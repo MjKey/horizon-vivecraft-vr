@@ -791,6 +791,18 @@ index 2b0521084d..0a49738ce6 100644
  horizon-command = { path = "../horizon-command" }
  horizon-items = { path = "../horizon-items" }
  horizon-core = { path = "../horizon-core" }
+diff --git a/crates/horizon-client/assets/horizon/lang/en_us.json b/crates/horizon-client/assets/horizon/lang/en_us.json
+index f93197dccd..8e80597bb7 100644
+--- a/crates/horizon-client/assets/horizon/lang/en_us.json
++++ b/crates/horizon-client/assets/horizon/lang/en_us.json
+@@ -281,6 +281,7 @@
+   "horizon.pages.open.split_setup": "Splitscreen...",
+   "horizon.pages.open.extras": "Extras...",
+   "horizon.pages.open.mods": "Mods...",
++  "horizon.vr.radial.mods": "Mods",
+   "horizon.pages.open.agent": "AI Agent...",
+   "horizon.pages.open.horizon_graphics": "Horizon Graphics...",
+   "horizon.pages.open.controller_binds": "Bindings...",
 diff --git a/crates/horizon-client/src/game.rs b/crates/horizon-client/src/game.rs
 index 202b2575f3..b56cfd9abc 100644
 --- a/crates/horizon-client/src/game.rs
@@ -988,6 +1000,38 @@ index cae23cba87..2a17a68efc 100644
              // PvP & HUD's shield size (100% is vanilla's), toward the hand holding it.
              let shield_size = self.pvp_shield_size();
              if shield_size != 100 && &*stack.item == "minecraft:shield" {
+diff --git a/crates/horizon-client/src/game/interface/options.rs b/crates/horizon-client/src/game/interface/options.rs
+index f8d6ce9491..024f3c046a 100644
+--- a/crates/horizon-client/src/game/interface/options.rs
++++ b/crates/horizon-client/src/game/interface/options.rs
+@@ -834,12 +834,10 @@ impl Game<'_> {
+     }
+ }
+ 
+-/// Fullbright is held off on another's server, where it would light what the server shows
+-/// dark: a connection without this window's integrated server, as a multiplayer server
+-/// or a LAN guest has. Single player, a LAN host and Replay Studio keep it.
+-/// `connection`: none, or whether it plays on this window's integrated server.
+-fn fullbright_held(connection: Option<bool>, studio: bool) -> bool {
+-    connection == Some(false) && !studio
++/// Horizon VR port: fullbright is only the client's own lightmap, so it is never held off,
++/// servers included (upstream held it on another's server).
++fn fullbright_held(_connection: Option<bool>, _studio: bool) -> bool {
++    false
+ }
+ 
+ /// The named device can be a connected pad that has not driven the game yet.
+@@ -1018,8 +1016,8 @@ mod fullbright_tests {
+         assert!(!fullbright_held(None, false));
+         // Single player and a LAN host play their own save; so does a splitscreen seat in P1's.
+         assert!(!fullbright_held(Some(true), false));
+-        // A multiplayer server, or another player's world opened to LAN.
+-        assert!(fullbright_held(Some(false), false));
++        // A multiplayer server, or another player's world opened to LAN (the VR port keeps it).
++        assert!(!fullbright_held(Some(false), false));
+         // Replay Studio plays a recording, not a server.
+         assert!(!fullbright_held(Some(false), true));
+     }
 diff --git a/crates/horizon-client/src/game/interface/pad/mod.rs b/crates/horizon-client/src/game/interface/pad/mod.rs
 index 026382e953..b243c0162f 100644
 --- a/crates/horizon-client/src/game/interface/pad/mod.rs

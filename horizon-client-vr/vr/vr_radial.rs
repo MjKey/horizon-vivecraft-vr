@@ -7,8 +7,9 @@ use glam::{Quat, Vec3};
 use std::sync::Mutex;
 use std::time::Instant;
 
-/// `getRadialItemsDefault`'s first 8, clockwise from the top.
-const ITEMS: [&str; 8] = [
+/// `getRadialItemsDefault`'s first 8, clockwise from the top, then the port's Mods button
+/// (a translation key: Horizon's Extras page, with fullbright, zoom and the FPS/coordinates HUD).
+const ITEMS: [&str; 9] = [
     "Drop Selected Item",
     "Chat",
     "Rotate Right",
@@ -17,7 +18,9 @@ const ITEMS: [&str; 8] = [
     "Toggle Player List",
     "Rotate Left",
     "Quick Torch",
+    MODS,
 ];
+const MODS: &str = "horizon.vr.radial.mods";
 /// The ring's radius and a button's reach, in the room (meters).
 const RADIUS: f32 = 0.22;
 const BUTTON: f32 = 0.09;
@@ -181,6 +184,7 @@ impl Game<'_> {
                 PLAYER_LIST.fetch_xor(true, std::sync::atomic::Ordering::Relaxed);
             }
             4 => self.vr_toggle_camera(),
+            8 => self.open_options_at(false, horizon_client::options_ui::Page::Extras),
             _ => log::info!("Horizon VR: radial \"{}\" is not ported", ITEMS[i]),
         }
     }
@@ -213,7 +217,11 @@ impl Game<'_> {
                     Some((super::vr_player::yaw_of(d), -super::vr_player::pitch_of(d)));
             }
             let alpha = if lit == Some(i) { 0xFF } else { 0x9F };
-            let text = horizon_client::text::Text::literal(*name);
+            let text = if *name == MODS {
+                horizon_client::text::Text::tr(MODS, &[])
+            } else {
+                horizon_client::text::Text::literal(*name)
+            };
             patches.extend(self.name_tag_quads(
                 o,
                 &[(text, 0.0)],

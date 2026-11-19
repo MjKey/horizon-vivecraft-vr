@@ -42,7 +42,7 @@ Log lines start with `Horizon VR:`. The game's log is in the console; SteamVR's 
 | RowTracker + AbstractBoatMixin | In a boat: swing both arms to row (one arm turns), stick turns by how far it's pushed, forward drives toward the left controller (tank controls) | `game/vr/vr_vehicle.rs`, `boats/mod.rs` |
 | VehicleTracker | Riding a boat/horse/minecart: the room turns with the vehicle | `vr_player.rs` |
 | TelescopeTracker | Hold a spyglass's end up to an eye: a 7Â° zoomed view shows where it points (round, as Vivecraft) | `horizon-vr` `lens_view`, `view_sections.rs` |
-| RadialHandler (hold mode) | Hold B: a ring of 8 labels in front of the right controller; point at one, let go. Drop, chat, rotate left/right, pick block, handheld camera, player list (stays shown until toggled), quick torch. Let go at once = repeat the last | `game/vr/vr_radial.rs` |
+| RadialHandler (hold mode) | Hold B: a ring of 9 labels in front of the right controller; point at one, let go. Drop, chat, rotate left/right, pick block, handheld camera, player list (stays shown until toggled), quick torch, Mods (Extras page: fullbright, zoom, FPS, coords). Let go at once = repeat the last | `game/vr/vr_radial.rs` |
 | CameraTracker | Radial "Toggle Handheld Camera": a camera in front of your right hand, staying in the world, its live picture on its back. Right grip at it = grab and move; right trigger at it = photo into `screenshots/vr_camera_*.png` (HDR off) | `game/vr/vr_camera.rs`, `horizon-vr` |
 | VRSettings | **VR Settings** button in the pause menu (VR only): free move type (controller / HMD / run in place), rotation increment (smooth, 10â€“180Â°), world scale, teleport on/off and survival limits, roomscale jumping/sneaking/climbing/swimming/rowing/crawling, HUD on wrist or head, radial hold/press and repeat, walk up blocks, simulate falling, camera FOV. Saved in `horizon-vr.txt` | `game/vr/vr_settings.rs` |
 | Seated / reverse hands / mirror | VR Settings: **Seated Mode** (no roomscale trackers or radial, room stays on you, walk where you look, HUD on head), **Reverse Hands** (left-handed: every control and the aim move to the other hand), **Desktop Mirror**: Third Person (Camera) shows the handheld camera on the desktop; **Mixed Reality** splits it: the camera view left, and right only what is nearer the camera than you on green, for keying in OBS | `vr_settings.rs`, `horizon-vr` |
@@ -87,3 +87,5 @@ enough to fix them.
 
 
 
+
+- 2026-11-19: **Mods** button (9th) on the radial ring opens Horizon's Extras page: fullbright, zoom, FPS counter and the PvP HUD coordinates, each a toggle. Fullbright is no longer held off on multiplayer servers (`fullbright_held` in `interface/options.rs`, in `horizon-hooks.patch`). Built; not headset-tested.
