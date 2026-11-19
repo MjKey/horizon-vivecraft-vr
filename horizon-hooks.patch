@@ -1113,7 +1113,7 @@ index 026382e953..b243c0162f 100644
 +    state
 +}
 diff --git a/crates/horizon-client/src/game/interface/pad_menu.rs b/crates/horizon-client/src/game/interface/pad_menu.rs
-index df497fd3ec..cecd86a6dd 100644
+index df497fd3ec..05af120c12 100644
 --- a/crates/horizon-client/src/game/interface/pad_menu.rs
 +++ b/crates/horizon-client/src/game/interface/pad_menu.rs
 @@ -2100,7 +2100,8 @@ impl Game<'_> {
@@ -1126,7 +1126,7 @@ index df497fd3ec..cecd86a6dd 100644
              menu.open_polls,
              !self.prompt_open()
                  && ((self.screen == Screen::Chat && !self.ui.in_bed_chat)
-@@ -2489,3 +2490,53 @@ mod tests {
+@@ -2489,3 +2490,68 @@ mod tests {
          assert!(!field_at(&[], (5.0, 5.0)));
      }
  }
@@ -1166,6 +1166,21 @@ index df497fd3ec..cecd86a6dd 100644
 +        );
 +        for (k, right) in [(0, false), (1, true)] {
 +            if now[k] != was[k] {
++                // The keyboard over the screen: the trigger types the key it points at, and
++                // pointing off the keyboard closes it (the click goes on to the screen).
++                if !right && let Some(keyboard) = self.pad.menu.osk.as_mut() {
++                    if keyboard.key_at(self.cursor) {
++                        if now[k]
++                            && let Some(out) = keyboard.press()
++                        {
++                            self.pad_osk_output(out);
++                        }
++                        continue;
++                    }
++                    if now[k] {
++                        self.pad.menu.osk = None;
++                    }
++                }
 +                self.pad_pointer_button(event_loop, right, now[k]);
 +                // The trigger on a text field (world name, search boxes) opens the
 +                // on-screen keyboard, as the pad's A does: the controllers have no keys.
@@ -1720,6 +1735,101 @@ index b730f2ea35..99f8e97c66 100644
              burn_from_stepping_immune: false,
              old_position: position,
              server_copy: false,
+diff --git a/crates/horizon-client/src/osk.rs b/crates/horizon-client/src/osk.rs
+index 4af9c1a54c..d3c7e1ab69 100644
+--- a/crates/horizon-client/src/osk.rs
++++ b/crates/horizon-client/src/osk.rs
+@@ -235,6 +235,11 @@ fn wrap_hints(
+ const STICK_PICK: f32 = 0.6;
+ const STICK_REST: f32 = 0.3;
+ 
++/// A key unit's width, the gap between keys and a key's height (GUI pixels).
++const UNIT: f32 = 50.0;
++const GAP: f32 = 6.0;
++const KEY_H: f32 = 38.0;
++
+ /// The keyboard's state while open.
+ #[derive(Clone, Debug, PartialEq)]
+ pub struct Keyboard {
+@@ -250,6 +255,8 @@ pub struct Keyboard {
+     suggests: bool,
+     /// The right stick has picked and not come back to rest.
+     stick_out: bool,
++    /// The keys' top-left corner as last drawn (GUI pixels), for pointing at a key (`key_at`).
++    origin: std::cell::Cell<Option<(f32, f32)>>,
+ }
+ impl Default for Keyboard {
+     fn default() -> Self {
+@@ -263,6 +270,7 @@ impl Default for Keyboard {
+             lines: false,
+             suggests: false,
+             stick_out: false,
++            origin: std::cell::Cell::new(None),
+         }
+     }
+ }
+@@ -309,6 +317,25 @@ impl Keyboard {
+         let left: f32 = row[..col].iter().map(|k| k.1).sum();
+         (left, row[col].1)
+     }
++    /// Points at the key under `at` (GUI pixels, as last drawn): it gets the focus. False when
++    /// `at` is on no key (outside the keyboard).
++    pub fn key_at(&mut self, at: (f32, f32)) -> bool {
++        let Some((x0, y0)) = self.origin.get() else {
++            return false;
++        };
++        for (r, row) in self.rows().iter().enumerate() {
++            let y = y0 + r as f32 * (KEY_H + GAP);
++            for (i, (_, units)) in row.iter().enumerate() {
++                let x = x0 + Self::span(row, i).0 * (UNIT + GAP);
++                let w = units * UNIT + (units - 1.0) * GAP;
++                if (x..x + w + GAP).contains(&at.0) && (y..y + KEY_H + GAP).contains(&at.1) {
++                    (self.row, self.col) = (r, i);
++                    return true;
++                }
++            }
++        }
++        false
++    }
+     fn key(&self) -> Key {
+         self.rows()[self.row][self.col].0
+     }
+@@ -436,9 +463,6 @@ impl Keyboard {
+     /// Draw the keyboard across the bottom of the screen, or the top when
+     /// the field it types into is in the lower half.
+     pub fn draw(&self, ui: &mut Ui, at_top: bool, glyphs: Glyphs) {
+-        const UNIT: f32 = 50.0;
+-        const GAP: f32 = 6.0;
+-        const KEY_H: f32 = 38.0;
+         const LABEL_PAD: f32 = 4.0;
+         let width = 10.0 * UNIT + 9.0 * GAP;
+         let hints = self.hint_lines(ui, glyphs, width);
+@@ -447,6 +471,7 @@ impl Keyboard {
+         let height = PANEL_PAD + keys_h + HINT_GAP + hints.len() as f32 * line_h + PANEL_PAD;
+         let x0 = ((ui.w - width) / 2.0).round();
+         let y0 = if at_top { 16.0 } else { ui.h - height - 16.0 };
++        self.origin.set(Some((x0, y0)));
+         ui.rounded(
+             x0 - PANEL_PAD,
+             y0 - PANEL_PAD,
+@@ -526,6 +551,17 @@ impl Keyboard {
+ mod tests {
+     use super::*;
+ 
++    #[test]
++    fn key_at_finds_the_drawn_key() {
++        let mut k = Keyboard::default();
++        assert!(!k.key_at((0.0, 0.0)), "not drawn yet");
++        k.origin.set(Some((100.0, 50.0)));
++        // Row 1, second key (`w`).
++        assert!(k.key_at((100.0 + UNIT + GAP + 1.0, 50.0 + KEY_H + GAP + 1.0)));
++        assert_eq!(k.press(), Some(Output::Text("w".into())));
++        assert!(!k.key_at((10.0, 10.0)), "outside");
++    }
++
+     #[test]
+     fn rows_are_ten_units_wide() {
+         for rows in [&LETTERS, &SYMBOLS] {
 diff --git a/crates/horizon-client/src/pose.rs b/crates/horizon-client/src/pose.rs
 index 8a50ce7d56..d6a9eff2bb 100644
 --- a/crates/horizon-client/src/pose.rs

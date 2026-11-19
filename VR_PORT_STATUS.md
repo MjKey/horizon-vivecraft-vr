@@ -93,3 +93,5 @@ enough to fix them.
 - 2026-11-19: new world no longer black: the room is placed again on each join (`VrPlayer.joined`), it stayed where the last world left it. Pre-launch `-Check` copies Horizon's zoom.hnmod into the VR instance. Sitting players: use Seated Mode (roomscale sneak/crawl read a low head as crouching).
 
 - 2026-11-19: the trigger on any text field (world name, mod search, inventory search) opens Horizon's on-screen keyboard (`vr_gui_frame` in `pad_menu.rs`, in the patch).
+
+- 2026-11-19: on-screen keyboard in VR: the trigger types the key the laser points at (`Keyboard::key_at` in `osk.rs`); pointing off it closes it.
