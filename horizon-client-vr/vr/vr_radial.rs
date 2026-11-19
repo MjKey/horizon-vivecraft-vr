@@ -184,7 +184,8 @@ impl Game<'_> {
                 PLAYER_LIST.fetch_xor(true, std::sync::atomic::Ordering::Relaxed);
             }
             4 => self.vr_toggle_camera(),
-            8 => self.open_options_at(false, horizon_client::options_ui::Page::Extras),
+            // `true`: closing goes back to playing, as `Action::Mods` (world_session.rs) does.
+            8 => self.open_options_at(true, horizon_client::options_ui::Page::Extras),
             _ => log::info!("Horizon VR: radial \"{}\" is not ported", ITEMS[i]),
         }
     }
