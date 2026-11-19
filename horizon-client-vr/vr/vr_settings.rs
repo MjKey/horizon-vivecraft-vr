@@ -109,7 +109,8 @@ fn change(f: impl FnOnce(&mut VrSettings)) {
 
 /// What the `horizon_vr` crate reads itself.
 fn push(s: VrSettings) {
-    horizon_vr::set_hud_head(s.hud_head || s.seated);
+    // Seated keeps the HUD where the player chose (wrist by default), not in the middle of the view.
+    horizon_vr::set_hud_head(s.hud_head);
     horizon_vr::set_reverse_hands(s.reverse_hands);
     horizon_vr::set_mirror_mode(match s.mirror {
         Mirror::FirstPerson => 0,

@@ -348,6 +348,8 @@ impl Game<'_> {
             poses,
             room: data.room,
         };
+        // The radial menu is a button, not roomscale: seated players have it too.
+        self.vr_radial_tick();
         // Seated mode has no roomscale tracker input.  Clear the states that a previous
         // standing tick could have left behind before returning.
         if super::vr_settings::vr_settings().seated {
@@ -364,7 +366,6 @@ impl Game<'_> {
             horizon_vr::set_telescope(None);
             return Ok(());
         }
-        self.vr_radial_tick();
         self.vr_run_tracker();
         self.vr_crawl_tracker();
         self.vr_camera_tick(data);
