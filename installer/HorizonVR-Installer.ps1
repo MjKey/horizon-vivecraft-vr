@@ -136,6 +136,8 @@ function Uninstall($dest, $say) {
     $dest = Full-Path $dest
     if (-not (Test-Path -LiteralPath (Join-Path $dest 'horizon-client.exe')) -or
         -not (Test-Path -LiteralPath (Join-Path $dest 'research-lock.json'))) {
+        # Files gone already (an older uninstall kept the launcher instance): remove just that.
+        if (Remove-LauncherInstance $dest $say) { & $say 'Horizon VR is uninstalled.'; return }
         throw "Horizon VR is not installed in $dest."
     }
     Assert-Closed $dest
@@ -336,6 +338,7 @@ function Remove-LauncherInstance($dest, $say) {
     & $say 'Removing the Horizon VR instance from the Horizon launcher...'
     if ((Run $launcherExe @('instance', 'delete', 'horizon-vr') $dest $say) -ne 0) { throw 'deleting it failed (see the log).' }
     if ($mine.version -like 'imported-*') { $null = Run $launcherExe @('remove', $mine.version) $dest $say }
+    $true
 }
 
 # Dot-sourced (by the tests): only define the functions.
