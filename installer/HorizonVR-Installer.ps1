@@ -4,7 +4,7 @@
 # and server jar by itself. `-Silent` installs with what it found, without the window. Install
 # also copies this installer into the install folder (a Start menu shortcut opens it), where its
 # Update button fetches the latest release from GitHub and updates the game and itself.
-param([switch]$Silent, [switch]$Repair, [switch]$Uninstall, [switch]$Update, [switch]$Check, [string]$InstallDir,
+param([switch]$Silent, [switch]$Repair, [switch]$Uninstall, [switch]$Update, [switch]$Check, [switch]$FromLauncher, [string]$InstallDir,
     [string]$MinecraftDir, [string]$ServerJar)
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 $here = $PSScriptRoot
@@ -126,7 +126,7 @@ function Assert-Closed($dest) {
 # screenshots, resource packs, mods) is the player's and stays.
 $installed = 'horizon-client.exe', 'horizon-prepare.exe', 'openxr_loader.dll', 'research-lock.json',
     'LICENSE.txt', 'Play Horizon VR.bat', 'exporters', 'mods\horizon', 'crates\horizon-prepare', '.local',
-    '.horizon-cache', 'version.txt', 'HorizonVR-Installer.ps1', 'Horizon VR Installer.bat'
+    '.horizon-cache', 'version.txt', 'horizon-base.txt', 'HorizonVR-Installer.ps1', 'Horizon VR Installer.bat'
 
 # Removes Horizon VR: its files and the desktop shortcut, keeping the player's worlds and settings.
 function Uninstall($dest, $say) {
@@ -287,10 +287,21 @@ function Add-LauncherInstance($dest, $say) {
     if ($mine) { $old = $mine.version } else { & $hz @('instance', 'create', '"Horizon VR"') 'Making the instance' }
     & $hz @('instance', 'version', 'horizon-vr', $new) 'Choosing the version'
     & $hz @('instance', 'launch', 'horizon-vr', '--env', 'HORIZON_VR=1') 'Turning VR on'
+    # Before each start: the update question (`-Check`), as the desktop shortcut asks it. `if exist`:
+    # once uninstalled, the instance still starts.
+    $script = Join-Path $dest 'HorizonVR-Installer.ps1'
+    $check = "if exist \`"$script\`" powershell -NoProfile -ExecutionPolicy Bypass -File \`"$script\`" -Check -FromLauncher"
+    & $hz @('instance', 'launch', 'horizon-vr', '--pre-launch', "`"$check`"") 'Adding the update check'
     $null = Run $launcherExe @('instance', 'icon', 'horizon-vr', 'ender_eye') $dest $say
     } finally {
-        # import-build selects what it imports: the player's own choice comes back.
+        # import-build selects what it imports: the player's own choice comes back, none included
+        # (the CLI can't set none, so the settings file gets it).
         if ($selected) { $null = Run $launcherExe @('settings', 'selected-version', $selected) $dest $say }
+        else {
+            $file = Join-Path $launcher 'settings.json'
+            $text = Get-Content -LiteralPath $file -Raw
+            [IO.File]::WriteAllText($file, ($text -replace '"selected":\s*"imported-[^"]*"', '"selected": null'))
+        }
     }
     # The version an update replaced; nothing else plays it.
     if ($old -like 'imported-*' -and $old -ne $new) { $null = Run $launcherExe @('remove', $old) $dest $say }
@@ -309,6 +320,12 @@ if ($Check) {
     if ($answer -ne 'Yes') { exit 0 }
     try {
         $null = Update $InstallDir (Find-Minecraft) (Find-ServerJar) { param($t) Write-Host $t }
+        if ($FromLauncher) {
+            # The launcher already chose the old version for this start: stop it (a failing
+            # pre-launch command does) and play the new one next time.
+            [System.Windows.Forms.MessageBox]::Show("Horizon VR is updated to $($latest.Version). Click Play again.") | Out-Null
+            exit 1
+        }
         [System.Windows.Forms.MessageBox]::Show("Horizon VR is updated to $($latest.Version).") | Out-Null
     } catch {
         [System.Windows.Forms.MessageBox]::Show("Update failed: $_`n`nThe game starts as it is; try Update in Horizon VR Installer later.") | Out-Null

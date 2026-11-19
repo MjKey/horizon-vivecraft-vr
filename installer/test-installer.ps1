@@ -180,9 +180,9 @@ Set-Content (Join-Path $dest 'options.txt') 'fov:90'
 $r = Silent @('-Uninstall', '-InstallDir', $dest)
 # The game itself also writes settings here (config, horizon-graphics.txt): the player's too.
 $left = @(Get-ChildItem $dest -Force | ForEach-Object Name | Sort-Object)
-$shipped = 'horizon-client.exe', 'horizon-prepare.exe', 'openxr_loader.dll', 'research-lock.json', 'LICENSE.txt',
-    'Play Horizon VR.bat', 'exporters', 'mods', 'crates', '.local', '.horizon-cache', 'version.txt',
-    'HorizonVR-Installer.ps1', 'Horizon VR Installer.bat'
+# Everything the release ships (so a newly shipped file can't be left behind unnoticed).
+$shipped = @(Get-ChildItem (Join-Path $work 'HorizonVR-Installer\files') -Force | ForEach-Object Name) +
+    '.local', '.horizon-cache', 'HorizonVR-Installer.ps1', 'Horizon VR Installer.bat'
 Check "uninstall keeps only the player's files ($($left -join ','))" ($r.Code -eq 0 -and
     'options.txt' -in $left -and 'saves' -in $left -and -not ($left | Where-Object { $_ -in $shipped }))
 Check 'uninstall keeps the world' ((Get-Content (Join-Path $dest 'saves\My World\level.dat')) -eq 'world')
