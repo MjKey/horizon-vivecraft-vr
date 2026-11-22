@@ -47,6 +47,10 @@ pub(crate) struct VrSettings {
     /// `renderDebugDeviceAxes` / `renderDebugPlayerAxes` (`DebugRenderHelper`).
     pub debug_device_axes: bool,
     pub debug_player_axes: bool,
+    /// `weaponCollision` (on: Vivecraft's AUTO, off in creative): swinging a hand hits and mines.
+    pub weapon_collision: bool,
+    /// `renderInGameCrosshairMode` ALWAYS, else NEVER.
+    pub crosshair: bool,
 }
 
 /// `VRSettings.MirrorMode` (the ones the port draws).
@@ -87,6 +91,8 @@ impl Default for VrSettings {
             osc_trackers: false,
             debug_device_axes: false,
             debug_player_axes: false,
+            weapon_collision: true,
+            crosshair: true,
         }
     }
 }
@@ -189,6 +195,8 @@ impl Store for Lines {
                 "oscTrackers" => flag(&mut s.osc_trackers),
                 "renderDebugDeviceAxes" => flag(&mut s.debug_device_axes),
                 "renderDebugPlayerAxes" => flag(&mut s.debug_player_axes),
+                "weaponCollision" => flag(&mut s.weapon_collision),
+                "crosshair" => flag(&mut s.crosshair),
                 "displayMirrorMode" => {
                     s.mirror = match value {
                         "THIRD_PERSON" => Mirror::ThirdPerson,
@@ -239,6 +247,8 @@ impl Store for Lines {
             ("vr.oscTrackers", s.osc_trackers),
             ("vr.renderDebugDeviceAxes", s.debug_device_axes),
             ("vr.renderDebugPlayerAxes", s.debug_player_axes),
+            ("vr.weaponCollision", s.weapon_collision),
+            ("vr.crosshair", s.crosshair),
         ] {
             line(k, b(v));
         }
@@ -249,7 +259,7 @@ impl Store for Lines {
 }
 
 /// The page's rows, in order.
-const ROWS: [&str; 23] = [
+const ROWS: [&str; 25] = [
     "vivecraft.options.FREEMOVE_MODE",
     "vivecraft.options.WORLD_ROTATION_INCREMENT",
     "vivecraft.options.WORLD_SCALE",
@@ -273,6 +283,8 @@ const ROWS: [&str; 23] = [
     "vivecraft.options.OSC_TRACKERS",
     "vivecraft.options.RENDER_DEBUG_DEVICE_AXES",
     "vivecraft.options.RENDER_DEBUG_PLAYER_AXES",
+    "vivecraft.options.WEAPON_COLLISION",
+    "vivecraft.options.crosshair",
 ];
 
 pub(crate) static PAGE: VrPage = VrPage;
@@ -403,6 +415,8 @@ impl VrPage {
             20 => &mut s.osc_trackers,
             21 => &mut s.debug_device_axes,
             22 => &mut s.debug_player_axes,
+            23 => &mut s.weapon_collision,
+            24 => &mut s.crosshair,
             _ => return None,
         })
     }
@@ -444,7 +458,9 @@ static LANG: &horizon_hooks::lang::Files = &[("en_us", r#"{
 "vivecraft.options.mirror.mixed_reality": "Mixed Reality",
 "vivecraft.options.OSC_TRACKERS": "OSC Trackers (port 9000)",
 "vivecraft.options.RENDER_DEBUG_DEVICE_AXES": "Local Device Axes",
-"vivecraft.options.RENDER_DEBUG_PLAYER_AXES": "Remote Device Axes"
+"vivecraft.options.RENDER_DEBUG_PLAYER_AXES": "Remote Device Axes",
+"vivecraft.options.WEAPON_COLLISION": "Weapon Collision",
+"vivecraft.options.crosshair": "Crosshair"
 }"#)];
 
 /// Registers the settings' file, their page and their names. Before the game starts.

@@ -493,6 +493,7 @@ impl Game<'_> {
             } else {
                 // `WeaponCollision.AUTO`: off in creative.
                 !jumping
+                    && super::vr_settings::vr_settings().weapon_collision
                     && self.screen == Screen::Playing
                     && self.sleeping.is_none()
                     && !self.creative

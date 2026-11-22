@@ -6,6 +6,7 @@ use super::Game;
 impl Game<'_> {
     pub(crate) fn vr_crosshair_geometry(&mut self, camera: [f64; 3], out: &mut Vec<super::Vertex>) {
         if self.screen != super::Screen::Playing
+            || !super::vr_settings::vr_settings().crosshair
             || horizon_vr::poses().is_none()
             || super::vr_radial::vr_radial_showing()
             || self.ui.hide_gui

@@ -95,3 +95,5 @@ enough to fix them.
 - 2026-11-19: the trigger on any text field (world name, mod search, inventory search) opens Horizon's on-screen keyboard (`vr_gui_frame` in `pad_menu.rs`, in the patch).
 
 - 2026-11-19: on-screen keyboard in VR: the trigger types the key the laser points at (`Keyboard::key_at` in `osk.rs`); pointing off it closes it.
+
+- 2026-11-23: VR Settings: **Weapon Collision** (swing mining/hitting on/off) and **Crosshair** (in-world crosshair on/off). Launcher base moved to nightly-2026-11-20-0a875da (the 6d765e0 release is gone from GitHub).
