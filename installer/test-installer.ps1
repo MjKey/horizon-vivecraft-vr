@@ -6,7 +6,7 @@ $ErrorActionPreference = 'Stop'
 $work = Join-Path $env:TEMP "horizonvr-test-$PID"
 New-Item -ItemType Directory -Force $work | Out-Null
 Expand-Archive $Zip $work
-$installer = Join-Path $work 'HorizonVR-Installer\HorizonVR-Installer.ps1'
+$installer = Join-Path $work 'HorizonVR-Installer\HorizonVR-Installer.exe'
 $dest = Join-Path $work 'install dir'
 $shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Horizon VR.lnk'
 $hadShortcut = Test-Path $shortcut
@@ -14,58 +14,37 @@ $hadStartMenu = Test-Path (Join-Path ([Environment]::GetFolderPath('Programs')) 
 $failed = 0
 # Leave the player's Horizon launcher alone (its instance is checked by hand).
 $env:HORIZONVR_LAUNCHER = Join-Path $work 'no-launcher.exe'
+$startMenuLink = Join-Path ([Environment]::GetFolderPath('Programs')) 'Horizon VR Installer.lnk'
 
 function Check($name, $ok) {
     if ($ok) { Write-Host "PASS  $name" -ForegroundColor Green }
     else { Write-Host "FAIL  $name" -ForegroundColor Red; $script:failed++ }
 }
-function Silent([string[]]$more) {
-    $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $installer -Silent @more 2>&1 | Out-String
-    [pscustomobject]@{ Code = $LASTEXITCODE; Out = $out }
+# Runs an installer exe; each argument quoted (a trailing backslash doubled, as Windows reads it).
+function Exe($exe, [string[]]$more) {
+    $log = Join-Path $work "out-$([guid]::NewGuid()).txt"
+    $quoted = @($more | ForEach-Object { '"' + ($_ -replace '\\$', '\\') + '"' })
+    $p = if ($quoted) { Start-Process $exe -ArgumentList $quoted -Wait -PassThru -NoNewWindow -RedirectStandardOutput $log }
+        else { Start-Process $exe -Wait -PassThru -NoNewWindow -RedirectStandardOutput $log }
+    [pscustomobject]@{ Code = $p.ExitCode; Out = (Get-Content $log -Raw -ErrorAction SilentlyContinue) + '' }
 }
+function Silent([string[]]$more) { Exe $installer (@('-Silent') + $more) }
 
-. $installer
-$mc = Find-Minecraft
-$jar = Find-ServerJar
-Check 'finds Minecraft 26.3 and the server jar' ($jar -and (Test-Path (Join-Path $mc 'versions\26.3\26.3.jar')))
+# The logic (versions, paths, Run, the launcher base fallback, the server jar search): unit tests.
+$unit = & cargo test --release --quiet --manifest-path (Join-Path $PSScriptRoot 'app\Cargo.toml') 2>&1 | Out-String
+Check 'the installer''s unit tests pass' ($LASTEXITCODE -eq 0)
+if ($LASTEXITCODE) { Write-Host $unit }
 
-# Resolve-Base: a pinned nightly gone from GitHub falls back to an installed version, else latest.
-$fake = Join-Path $work 'fake-launcher'
-New-Item -ItemType Directory -Force (Join-Path $fake 'versions\nightly-old') | Out-Null
-$fakeExe = Join-Path $fake 'hz.cmd'
-Set-Content $fakeExe -Encoding ascii @'
-@echo off
-if "%1"=="install" if "%2"=="latest" ( mkdir "%~dp0versions\nightly-new" & exit /b 0 )
-if "%1"=="install" if "%2"=="nightly-kept" ( mkdir "%~dp0versions\nightly-kept" & exit /b 0 )
-if "%1"=="install" exit /b 1
-if "%1"=="versions" ( if exist "%~dp0versions\nightly-new" ( echo {"installed":["nightly-new","imported-x"]} ) else ( echo {"installed":["imported-x","nightly-old"]} ) )
-'@
-$savedLauncher, $savedExe = $launcher, $launcherExe
-$launcher, $launcherExe = $fake, $fakeExe
-Check 'base: installed pin is used' ((Resolve-Base 'nightly-old' $work { }) -eq 'nightly-old')
-Check 'base: downloadable pin is installed' ((Resolve-Base 'nightly-kept' $work { }) -eq 'nightly-kept')
-Remove-Item (Join-Path $fake 'versions\nightly-kept')
-Check 'base: gone pin uses an installed one' ((Resolve-Base 'nightly-gone' $work { }) -eq 'nightly-old')
-Remove-Item (Join-Path $fake 'versions\nightly-old')
-Check 'base: none installed installs latest' ((Resolve-Base 'nightly-gone' $work { }) -eq 'nightly-new')
-$launcher, $launcherExe = $savedLauncher, $savedExe
-
-# Run: the exit code survives (Windows PowerShell drops it unless the handle is read).
-Check 'Run returns the exit code' ((Run 'cmd.exe' @('/c', 'exit 3') $work { }) -eq 3)
-
-# Run: stdout and stderr lines each shown once, even when they interleave.
-$seen = [Collections.Generic.List[string]]::new()
-$null = Run 'cmd.exe' @('/c', '"echo out1& echo err1 1>&2& ping -n 2 127.0.0.1 >nul& echo out2& echo err2 1>&2"') $work { param($t) $seen.Add($t.Trim()) }
-Check 'Run shows every output line once' ((($seen | Sort-Object) -join ',') -eq 'err1,err2,out1,out2')
-
-# Find-ServerJar: another jar in Downloads is not taken for the 26.3 server jar.
+$launcher = Join-Path $env:APPDATA 'horizon-launcher'
+$mc = @((Join-Path $launcher 'minecraft'), (Join-Path $env:APPDATA '.minecraft')) |
+    Where-Object { Test-Path (Join-Path $_ 'versions\26.3\26.3.jar') } | Select-Object -First 1
+$sha = (Get-Content (Join-Path $work 'HorizonVR-Installer\files\research-lock.json') -Raw | ConvertFrom-Json).minecraft.server_sha1
+$jar = @(Join-Path $launcher 'server-jars\26.3.jar') + @(Get-ChildItem (Join-Path $launcher 'versions\*\.local\minecraft\26.3\jars\server.jar') -ErrorAction SilentlyContinue | ForEach-Object FullName) |
+    Where-Object { (Test-Path $_) -and (Get-FileHash $_ -Algorithm SHA1).Hash -eq $sha } | Select-Object -First 1
+Check 'finds Minecraft 26.3 and the server jar' ($jar -and $mc)
 $fakeHome = Join-Path $work 'home'
 New-Item -ItemType Directory -Force (Join-Path $fakeHome 'Downloads') | Out-Null
 $f = [IO.File]::Create((Join-Path $fakeHome 'Downloads\server-1.21.4.jar')); $f.SetLength(31MB); $f.Close()
-$realLauncher, $realHome = $launcher, $env:USERPROFILE
-$launcher, $env:USERPROFILE = (Join-Path $work 'no-launcher'), $fakeHome
-Check 'another version''s server jar is not found' ((Find-ServerJar) -eq '')
-$launcher, $env:USERPROFILE = $realLauncher, $realHome
 
 # JDK check in install.ps1: the major version read from `javac -version`.
 $major = { param($v) [int]((($v -replace '[^0-9.]', '').Split('.'))[0]) }
@@ -79,8 +58,8 @@ Check 'a wrong server jar is refused' ($r.Code -eq 1 -and $r.Out -match 'server 
 $alone = Join-Path $work 'alone'
 New-Item -ItemType Directory -Force $alone | Out-Null
 Copy-Item $installer $alone
-$r = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $alone 'HorizonVR-Installer.ps1') -Silent -InstallDir $dest -ServerJar $jar 2>&1 | Out-String
-Check 'missing game files say to unzip' ($LASTEXITCODE -eq 1 -and $r -match 'Unzip')
+$r = Exe (Join-Path $alone 'HorizonVR-Installer.exe') @('-Silent', '-InstallDir', $dest, '-ServerJar', $jar)
+Check 'missing game files say to unzip' ($r.Code -eq 1 -and $r.Out -match 'Unzip')
 
 # A file errors stops the install (the install folder is a file here).
 $asFile = Join-Path $work 'a file'
@@ -90,11 +69,12 @@ Check 'a copy error stops the install' ($r.Code -eq 1 -and $r.Out -notmatch 'Don
 
 # A full install, as the window calls it, with trailing backslashes on both folders (a command
 # line can't pass those: Windows reads a backslash before a quote as part of the argument).
-$installLog = [Collections.Generic.List[string]]::new()
-$ok = try { Install "$dest\" "$mc\" $jar { param($t) $installLog.Add($t) }; $true } catch { $installLog.Add("$_"); $false }
-if (-not $ok) { $installLog | Select-Object -Last 3 | Write-Host }
+$r = Silent @('-InstallDir', "$dest\", '-MinecraftDir', "$mc\", '-ServerJar', $jar)
+$ok = $r.Code -eq 0
+if (-not $ok) { $r.Out -split "`n" | Select-Object -Last 3 | Write-Host }
+$installLog = $r.Out
 Check 'installs with trailing backslashes' ($ok -and (Test-Path (Join-Path $dest '.local\horizon-client\26.3')))
-Check 'uses the shipped exporters (compiles nothing)' (-not ($installLog -match 'ompil'))
+Check 'uses the shipped exporters (compiles nothing)' ($installLog -notmatch 'ompil')
 # The shortcut may spell the folder with its long name where $dest has the short (8.3) one.
 $target = (New-Object -ComObject WScript.Shell).CreateShortcut($shortcut).TargetPath
 Check 'makes the desktop shortcut' ((Test-Path -LiteralPath $target) -and $target -like '*\install dir\Play Horizon VR.bat')
@@ -118,15 +98,14 @@ $game.WaitForExit()
 
 # The window: click Install and wait for the "installed" message.
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-$gui = Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$installer`"", '-InstallDir', "`"$dest`"" -PassThru
+$gui = Start-Process $installer -ArgumentList '-InstallDir', "`"$dest`"" -PassThru
 $root = [Windows.Automation.AutomationElement]::RootElement
 $byPid = [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::ProcessIdProperty, $gui.Id)
 $deadline = (Get-Date).AddSeconds(120)
 do { Start-Sleep -Milliseconds 500; $window = $root.FindFirst('Children', $byPid) } until ($window -or (Get-Date) -gt $deadline)
 $byName = [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::NameProperty, 'Install')
 $button = if ($window) { $window.FindFirst('Descendants', $byName) }
-# WinForms buttons show up as panes without an invoke pattern: post BM_CLICK (posted, as sending
-# would wait for the whole install).
+# BM_CLICK posted to the button (sending would wait for the whole install).
 Add-Type -Namespace Win32 -Name User -MemberDefinition '[DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);'
 if ($button) { [void][Win32.User]::PostMessage([IntPtr]$button.Current.NativeWindowHandle, 0xF5, [IntPtr]::Zero, [IntPtr]::Zero) }
 $message = $null
@@ -149,8 +128,8 @@ Check 'repair restores a broken install' ($r.Code -eq 0 -and (Test-Path (Join-Pa
     -not (Test-Path (Join-Path $dest '.local\horizon-client\26.3\broken.txt')) -and (Test-Path (Join-Path $dest '.local\horizon-client\26.3')))
 
 # Update: a fake newer release (this zip, as 9.9.9) served the way GitHub's API gives it.
-Check 'install copies the installer and its version' ((Test-Path (Join-Path $dest 'HorizonVR-Installer.ps1')) -and
-    (Test-Path (Join-Path $dest 'Horizon VR Installer.bat')) -and (Test-Path (Join-Path $dest 'version.txt')))
+Check 'install copies the installer and its version' ((Test-Path (Join-Path $dest 'HorizonVR-Installer.exe')) -and
+    (Test-Path (Join-Path $dest 'version.txt')))
 $serve = Join-Path $work 'serve'
 $newer = Join-Path $work 'newer'
 New-Item -ItemType Directory -Force $serve | Out-Null
@@ -167,11 +146,8 @@ Write-Release ('0' * 64)
 $server = Start-Process python -ArgumentList '-m', 'http.server', $port, '--bind', '127.0.0.1' -WorkingDirectory $serve -PassThru -WindowStyle Hidden
 Start-Sleep 2
 $env:HORIZONVR_RELEASES = "http://127.0.0.1:$port/latest.json"
-$installedCopy = Join-Path $dest 'HorizonVR-Installer.ps1'
-function FromInstall([string[]]$more) {
-    $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $installedCopy -Silent @more 2>&1 | Out-String
-    [pscustomobject]@{ Code = $LASTEXITCODE; Out = $out }
-}
+$installedCopy = Join-Path $dest 'HorizonVR-Installer.exe'
+function FromInstall([string[]]$more) { Exe $installedCopy (@('-Silent') + $more) }
 $r = FromInstall @('-Update')
 Check 'update refuses a download with the wrong checksum' ($r.Code -eq 1 -and $r.Out -match 'checksum' -and
     (Get-Content (Join-Path $dest 'version.txt')).Trim() -ne '9.9.9')
@@ -195,7 +171,10 @@ Remove-Item Env:HORIZONVR_RELEASES
 
 # Uninstall refuses a folder without Horizon VR in it.
 $r = Silent @('-Uninstall', '-InstallDir', $alone)
-Check 'uninstall refuses a folder without Horizon VR' ($r.Code -eq 1 -and (Test-Path (Join-Path $alone 'HorizonVR-Installer.ps1')))
+Check 'uninstall refuses a folder without Horizon VR' ($r.Code -eq 1 -and (Test-Path (Join-Path $alone 'HorizonVR-Installer.exe')))
+# Installers 0.3.2 and older run the release's HorizonVR-Installer.ps1: it runs the exe.
+$legacy = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $work 'HorizonVR-Installer\HorizonVR-Installer.ps1') -Silent -Uninstall -InstallDir $alone 2>&1 | Out-String
+Check "the old installers' .ps1 runs the exe ($LASTEXITCODE)" ($LASTEXITCODE -eq 1 -and $legacy -match 'not installed')
 
 # Uninstall: the game, the prepared files and the shortcut go; the player's worlds and settings stay.
 New-Item -ItemType Directory -Force (Join-Path $dest 'saves\My World') | Out-Null
@@ -206,7 +185,7 @@ $r = Silent @('-Uninstall', '-InstallDir', $dest)
 $left = @(Get-ChildItem $dest -Force | ForEach-Object Name | Sort-Object)
 # Everything the release ships (so a newly shipped file can't be left behind unnoticed).
 $shipped = @(Get-ChildItem (Join-Path $work 'HorizonVR-Installer\files') -Force | ForEach-Object Name) +
-    '.local', '.horizon-cache', 'HorizonVR-Installer.ps1', 'Horizon VR Installer.bat'
+    '.local', '.horizon-cache'
 Check "uninstall keeps only the player's files ($($left -join ','))" ($r.Code -eq 0 -and
     'options.txt' -in $left -and 'saves' -in $left -and -not ($left | Where-Object { $_ -in $shipped }))
 Check 'uninstall keeps the world' ((Get-Content (Join-Path $dest 'saves\My World\level.dat')) -eq 'world')

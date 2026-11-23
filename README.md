@@ -16,7 +16,7 @@ of [VivecraftMod](https://github.com/Vivecraft/VivecraftMod) using OpenXR (Steam
 ## Install
 
 1. Download `HorizonVR-Installer.zip` from [Releases](https://github.com/v1nx0/horizon-vivecraft-vr/releases/latest).
-2. Unzip it and double-click `Install Horizon VR.bat`.
+2. Unzip it and double-click `HorizonVR-Installer.exe`.
 3. Check the three paths (install folder, Minecraft folder, server jar) and click **Install**.
 4. Start SteamVR, then open **Horizon VR** on your desktop.
 

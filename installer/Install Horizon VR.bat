@@ -1,3 +1,3 @@
 @echo off
-rem Opens the Horizon VR installer window.
-powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0HorizonVR-Installer.ps1"
+rem Opens the Horizon VR installer window (older installers' Update copies this file too).
+start "" "%~dp0HorizonVR-Installer.exe"

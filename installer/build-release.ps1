@@ -43,6 +43,16 @@ Copy-Item (Join-Path $PSScriptRoot 'VERSION') (Join-Path $files 'version.txt')
 # The Horizon launcher version this game is built on: the installer imports the game on it.
 Copy-Item (Join-Path $PSScriptRoot 'HORIZON_BASE') (Join-Path $files 'horizon-base.txt')
 
+# The installer: beside files\ to start, in files\ for the install folder (an older installer's
+# Update copies only files\). The .ps1 and .bat stay for those older installers' Update.
+# cargo writes its progress to stderr, which Stop would take for an error.
+$ErrorActionPreference = 'Continue'
+cargo build --release --manifest-path (Join-Path $PSScriptRoot 'app\Cargo.toml') 2>&1 | Out-Host
+$ErrorActionPreference = 'Stop'
+if ($LASTEXITCODE) { throw 'building the installer failed' }
+$exe = Join-Path $PSScriptRoot 'app\target\release\HorizonVR-Installer.exe'
+Copy-Item $exe $stage
+Copy-Item $exe $files
 Copy-Item (Join-Path $PSScriptRoot 'HorizonVR-Installer.ps1'), (Join-Path $PSScriptRoot 'Install Horizon VR.bat') $stage
 Compress-Archive -Path $stage -DestinationPath (Join-Path $out 'HorizonVR-Installer.zip')
 Write-Host "Made $(Join-Path $out 'HorizonVR-Installer.zip')"
