@@ -41,7 +41,7 @@ function Find-ServerJar {
 
 if (-not $InstallDir) {
     # Run from an install folder (its copy of the installer): that folder.
-    $InstallDir = if (Test-Path (Join-Path $here 'horizon-client.exe')) { $here } else { Join-Path $env:LOCALAPPDATA 'HorizonVR' }
+    $InstallDir = if ((Test-Path (Join-Path $here 'horizon-client.exe')) -or (Test-Path (Join-Path $here 'version.txt'))) { $here } else { Join-Path $env:LOCALAPPDATA 'HorizonVR' }
 }
 
 # Where releases come from. HORIZONVR_RELEASES points the tests at a local copy.
@@ -218,7 +218,8 @@ function Install($dest, $mc, $server, $say, $src = $here) {
         return
     }
     if (-not (Test-Path (Join-Path $src 'files\horizon-client.exe'))) {
-        if (-not (Test-Path (Join-Path $here 'horizon-client.exe'))) {
+        # An install folder (its version.txt) fetches the release, even with its game deleted.
+        if (-not (Test-Path (Join-Path $here 'horizon-client.exe')) -and -not (Test-Path (Join-Path $here 'version.txt'))) {
             throw 'The game files are missing. Unzip the whole HorizonVR-Installer.zip and run the installer from the unzipped folder.'
         }
         $src = Get-Release (Get-Latest) $say
@@ -234,11 +235,7 @@ function Install($dest, $mc, $server, $say, $src = $here) {
     if ((-not $server -or -not (Is-ServerJar $server)) -and $baseFile -and (Test-Path $launcherExe)) {
         # No jar yet: the launcher installs and prepares the nightly this build is on, which
         # downloads it (and the version then plays in the launcher too).
-        $base = (Get-Content $baseFile -Raw).Trim()
-        if (-not (Test-Path (Join-Path $launcher "versions\$base"))) {
-            & $say "Installing Horizon $base in the Horizon launcher..."
-            $null = Run $launcherExe @('install', $base) $dest $say
-        }
+        $base = Resolve-Base (Get-Content $baseFile -Raw).Trim() $dest $say
         & $say "Preparing Horizon $base in the Horizon launcher (a few minutes)..."
         $null = Run $launcherExe @('prepare', '--version', $base) $dest $say
         $server = Find-ServerJar
@@ -300,6 +297,27 @@ function Install($dest, $mc, $server, $say, $src = $here) {
     & $say 'Done. Start SteamVR, then open "Horizon VR" on your desktop (or the Horizon VR instance in the Horizon launcher).'
 }
 
+# The launcher version to import the game on: the one it was built on (horizon-base.txt) when it is
+# installed or still downloadable. Nightlies leave GitHub after a while, so then any installed
+# Horizon version, else the latest release: the base only lends its game files, the exe is ours.
+function Resolve-Base($want, $dest, $say) {
+    $versions = Join-Path $launcher 'versions'
+    if (Test-Path (Join-Path $versions $want)) { return $want }
+    & $say "Installing Horizon $want in the Horizon launcher..."
+    if ((Run $launcherExe @('install', $want) $dest $say) -eq 0 -and (Test-Path (Join-Path $versions $want))) { return $want }
+    $have = @(((& $launcherExe versions --installed --json | Out-String) | ConvertFrom-Json).installed |
+        Where-Object { $_ -notlike 'imported-*' -and $_ -notlike 'native-*' -and (Test-Path (Join-Path $versions $_)) })
+    if ($have) { & $say "$want is gone from GitHub; using the installed $($have[0])."; return $have[0] }
+    & $say "$want is gone from GitHub; installing the latest Horizon instead..."
+    $before = @(Get-ChildItem $versions -Directory -ErrorAction SilentlyContinue | ForEach-Object Name)
+    if ((Run $launcherExe @('install', 'latest') $dest $say) -ne 0) { throw 'Installing Horizon in the Horizon launcher failed (see the log).' }
+    $got = @(((& $launcherExe versions --installed --json | Out-String) | ConvertFrom-Json).installed |
+        Where-Object { $_ -notlike 'imported-*' -and $_ -notlike 'native-*' -and $before -notcontains $_ })
+    if (-not $got) { $got = @(((& $launcherExe versions --installed --json | Out-String) | ConvertFrom-Json).installed | Where-Object { $_ -notlike 'imported-*' -and $_ -notlike 'native-*' }) }
+    if (-not $got) { throw 'No Horizon version is installed in the Horizon launcher.' }
+    $got[0]
+}
+
 # A "Horizon VR" instance in the Horizon launcher: the game imported (`import-build`) on the
 # launcher version it was built on (horizon-base.txt), so it plays with the launcher's account.
 # HORIZONVR_LAUNCHER points the tests away from the player's launcher.
@@ -313,8 +331,8 @@ function Add-LauncherInstance($dest, $say) {
     $versions = Join-Path $launcher 'versions'
     $hz = { param([string[]]$a, $what) if ((Run $launcherExe $a $dest $say) -ne 0) { throw "$what failed (see the log)." } }
     $selected = ((& $launcherExe settings --json | Out-String) | ConvertFrom-Json).selected_version
+    $base = Resolve-Base $base $dest $say
     & $say "Adding the Horizon VR instance to the Horizon launcher (on $base)..."
-    if (-not (Test-Path (Join-Path $versions $base))) { & $hz @('install', $base) "Installing $base" }
     try {
     & $hz @('import-build', "`"$(Join-Path $dest 'horizon-client.exe')`"", '--version', $base, '--trust-unsigned') 'Importing the game'
     # import-build selects the version it made (the same one again for the same game).

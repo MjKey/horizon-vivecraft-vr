@@ -29,6 +29,27 @@ $mc = Find-Minecraft
 $jar = Find-ServerJar
 Check 'finds Minecraft 26.3 and the server jar' ($jar -and (Test-Path (Join-Path $mc 'versions\26.3\26.3.jar')))
 
+# Resolve-Base: a pinned nightly gone from GitHub falls back to an installed version, else latest.
+$fake = Join-Path $work 'fake-launcher'
+New-Item -ItemType Directory -Force (Join-Path $fake 'versions\nightly-old') | Out-Null
+$fakeExe = Join-Path $fake 'hz.cmd'
+Set-Content $fakeExe -Encoding ascii @'
+@echo off
+if "%1"=="install" if "%2"=="latest" ( mkdir "%~dp0versions\nightly-new" & exit /b 0 )
+if "%1"=="install" if "%2"=="nightly-kept" ( mkdir "%~dp0versions\nightly-kept" & exit /b 0 )
+if "%1"=="install" exit /b 1
+if "%1"=="versions" ( if exist "%~dp0versions\nightly-new" ( echo {"installed":["nightly-new","imported-x"]} ) else ( echo {"installed":["imported-x","nightly-old"]} ) )
+'@
+$savedLauncher, $savedExe = $launcher, $launcherExe
+$launcher, $launcherExe = $fake, $fakeExe
+Check 'base: installed pin is used' ((Resolve-Base 'nightly-old' $work { }) -eq 'nightly-old')
+Check 'base: downloadable pin is installed' ((Resolve-Base 'nightly-kept' $work { }) -eq 'nightly-kept')
+Remove-Item (Join-Path $fake 'versions\nightly-kept')
+Check 'base: gone pin uses an installed one' ((Resolve-Base 'nightly-gone' $work { }) -eq 'nightly-old')
+Remove-Item (Join-Path $fake 'versions\nightly-old')
+Check 'base: none installed installs latest' ((Resolve-Base 'nightly-gone' $work { }) -eq 'nightly-new')
+$launcher, $launcherExe = $savedLauncher, $savedExe
+
 # Run: the exit code survives (Windows PowerShell drops it unless the handle is read).
 Check 'Run returns the exit code' ((Run 'cmd.exe' @('/c', 'exit 3') $work { }) -eq 3)
 
@@ -80,6 +101,8 @@ Check 'makes the desktop shortcut' ((Test-Path -LiteralPath $target) -and $targe
 
 # Reinstall: a file the release no longer ships is removed; the prepared game files stay.
 Set-Content (Join-Path $dest 'exporters\stale.txt') 'old'
+# An older install (the same version is skipped as installed).
+Remove-Item (Join-Path $dest 'version.txt')
 $r = Silent @('-InstallDir', $dest)
 Check 'reinstall removes old files' ($r.Code -eq 0 -and -not (Test-Path (Join-Path $dest 'exporters\stale.txt')))
 Check 'reinstall keeps the prepared files' (Test-Path (Join-Path $dest '.local\horizon-client\26.3'))
@@ -87,6 +110,7 @@ Check 'reinstall keeps the prepared files' (Test-Path (Join-Path $dest '.local\h
 # The running game is noticed, even with a trailing backslash on the folder.
 $game = Start-Process (Join-Path $dest 'horizon-client.exe') -ArgumentList '--resources', "`"$dest\.local\horizon-client\26.3`"" -WorkingDirectory $dest -PassThru
 Start-Sleep 5
+Remove-Item (Join-Path $dest 'version.txt')
 $r = Silent @('-InstallDir', "$dest\")
 Check 'refuses while the game runs' ($r.Code -eq 1 -and $r.Out -match 'running')
 Stop-Process $game -ErrorAction SilentlyContinue
@@ -163,9 +187,9 @@ $r = FromInstall @('-Check')
 Check 'the start check stays quiet offline' ($r.Code -eq 0)
 $env:HORIZONVR_RELEASES = "http://127.0.0.1:$port/latest.json"
 # The installer copy in the install folder installs (repairs) from the latest release by itself.
-Remove-Item (Join-Path $dest 'horizon-prepare.exe')
+Remove-Item (Join-Path $dest 'horizon-client.exe')
 $r = FromInstall @()
-Check 'the installed installer reinstalls from the latest release' ($r.Code -eq 0 -and (Test-Path (Join-Path $dest 'horizon-prepare.exe')))
+Check 'the installed installer reinstalls from the latest release' ($r.Code -eq 0 -and (Test-Path (Join-Path $dest 'horizon-client.exe')))
 Stop-Process $server -ErrorAction SilentlyContinue
 Remove-Item Env:HORIZONVR_RELEASES
 
