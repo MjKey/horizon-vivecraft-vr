@@ -1,5 +1,9 @@
+<p align="center"><img src="logo-installer.png" width="220" alt="Horizon VR logo"></p>
+
 # Horizon Vivecraft VR
 
+[![Download](https://img.shields.io/github/v/release/v1nx0/horizon-vivecraft-vr?label=Download&color=2ea44f)](https://github.com/v1nx0/horizon-vivecraft-vr/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/v1nx0/horizon-vivecraft-vr/total?color=blue)](https://github.com/v1nx0/horizon-vivecraft-vr/releases)
 [![Bitcoin](https://img.shields.io/badge/Bitcoin-donate-F7931A?logo=bitcoin&logoColor=white)](#donate)
 [![Solana](https://img.shields.io/badge/Solana-donate-9945FF?logo=solana&logoColor=white)](#donate)
 
@@ -40,6 +44,10 @@ settings.
 - On servers with the Vivecraft plugin, other players see your VR body, and you see theirs: arms,
   headset, and legs that follow full-body trackers.
 - Full-body tracking through OSC (SlimeVR and similar): VR Settings, then **OSC Trackers**.
+- Swing your pickaxe or sword to mine and hit (**Weapon Collision**), a VR keyboard for text boxes,
+  and a **Comfort Vignette** against motion sickness.
+- **Seated Mode** for playing sitting down.
+- A **Mods** entry on the ring menu: Fullbright, Zoom, FPS counter and coordinates.
 
 The full list, including what isn't ported, is in [`VR_PORT_STATUS.md`](VR_PORT_STATUS.md).
 
@@ -53,7 +61,7 @@ other players' VR bodies, and full-body trackers. Please report bugs in
 
 You need [Git](https://git-scm.com/download/win), [Rust](https://rustup.rs) and
 [JDK 25](https://adoptium.net). Download this repo and run `Install.bat`. It clones Horizon at
-commit `6d765e0` (Horizon nightly 2026-11-18), adds the VR code, applies `horizon-hooks.patch`, builds the game and prepares the
+commit `6d765e0`, adds the VR code, applies `horizon-hooks.patch`, builds the game and prepares the
 game files.
 
 | Path | What it holds |
@@ -61,7 +69,7 @@ game files.
 | `crates/horizon-vr/` | The OpenXR runtime: headset, controllers, eye rendering |
 | `horizon-client-vr/vr/` | The game's VR modules (they go in `crates/horizon-client/src/game/vr/`) |
 | `horizon-hooks.patch` | The changes to Horizon's own files |
-| `installer/` | The installer window, `build-release.ps1` (makes the zip), `test-installer.ps1` |
+| `installer/` | The installer (`app/`, Rust), `build-release.ps1` (makes the release files), `test-installer.ps1` |
 
 ## License
 
