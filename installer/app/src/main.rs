@@ -53,12 +53,20 @@ fn releases() -> String {
         .unwrap_or_else(|_| "https://api.github.com/repos/v1nx0/horizon-vivecraft-vr/releases/latest".into())
 }
 
+/// HORIZONVR_SHORTCUTS: one folder for both shortcuts, so the tests leave the real ones alone.
 fn start_menu_link() -> PathBuf {
-    env_dir("APPDATA").join(r"Microsoft\Windows\Start Menu\Programs\Horizon VR Installer.lnk")
+    env::var_os("HORIZONVR_SHORTCUTS")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| env_dir("APPDATA").join(r"Microsoft\Windows\Start Menu\Programs"))
+        .join("Horizon VR Installer.lnk")
 }
 
 fn desktop_link() -> PathBuf {
-    dirs::desktop_dir().unwrap_or_else(|| env_dir("USERPROFILE").join("Desktop")).join("Horizon VR.lnk")
+    env::var_os("HORIZONVR_SHORTCUTS")
+        .map(PathBuf::from)
+        .or_else(dirs::desktop_dir)
+        .unwrap_or_else(|| env_dir("USERPROFILE").join("Desktop"))
+        .join("Horizon VR.lnk")
 }
 
 /// A Minecraft folder with 26.3 downloaded: the Horizon launcher's first, then the official one.
@@ -166,40 +174,125 @@ pub fn read_version(path: &Path) -> Option<Version> {
 
 pub struct Latest {
     pub version: Version,
+    name: String,
     url: String,
-    sha256: Option<String>,
+    sha256: String,
 }
 
 fn agent() -> ureq::Agent {
     ureq::AgentBuilder::new().timeout_connect(Duration::from_secs(15)).timeout_read(Duration::from_secs(60)).build()
 }
 
-/// The latest release: its version and the installer zip's address and SHA-256.
+/// A request's failure, said so the player knows what to do.
+fn net_error(url: &str, e: ureq::Error) -> String {
+    match e {
+        ureq::Error::Status(403 | 429, _) if url.contains("github") => {
+            "GitHub's limit on update checks was reached. Try again in an hour.".into()
+        }
+        ureq::Error::Status(code, _) => format!("The server answered {code} for {url}."),
+        ureq::Error::Transport(t) => format!("No internet connection, or the server could not be reached ({t})."),
+    }
+}
+
+fn get(url: &str) -> ureq::Request {
+    agent().get(url).set("User-Agent", "HorizonVR-Installer")
+}
+
+/// The game download: the small installer's payload, else (a release from before it) the zip.
+const PAYLOAD: &str = "HorizonVR-Payload.zip";
+const LEGACY_ZIP: &str = "HorizonVR-Installer.zip";
+
+/// The latest release: its version and the game download's address and SHA-256 (GitHub's digest,
+/// else the `<asset>.sha256` file beside it). No hash: nothing unverified is installed.
 pub fn get_latest() -> R<Latest> {
-    let r: Value = agent()
-        .get(&releases())
-        .set("User-Agent", "HorizonVR-Installer")
+    let url = releases();
+    let r: Value = get(&url)
         .timeout(Duration::from_secs(15))
         .call()
-        .map_err(|e| e.to_string())?
+        .map_err(|e| net_error(&url, e))?
         .into_json()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("The release list could not be read ({e})."))?;
     let tag = r["tag_name"].as_str().unwrap_or_default();
-    let asset = r["assets"]
-        .as_array()
-        .and_then(|a| a.iter().find(|a| a["name"] == "HorizonVR-Installer.zip"))
-        .ok_or_else(|| format!("The latest release ({tag}) has no HorizonVR-Installer.zip."))?;
+    let assets = r["assets"].as_array().cloned().unwrap_or_default();
+    let named = |n: &str| assets.iter().find(|a| a["name"] == n);
+    let asset = named(PAYLOAD)
+        .or_else(|| named(LEGACY_ZIP))
+        .ok_or_else(|| format!("The latest release ({tag}) has no {PAYLOAD}."))?;
+    let name = asset["name"].as_str().unwrap_or_default().to_owned();
+    let mut sha256 = asset["digest"].as_str().and_then(|d| d.strip_prefix("sha256:")).map(str::to_owned);
+    if sha256.is_none()
+        && let Some(side) = named(&format!("{name}.sha256")).and_then(|a| a["browser_download_url"].as_str())
+    {
+        let text = get(side).call().map_err(|e| net_error(side, e))?.into_string().map_err(|e| e.to_string())?;
+        sha256 = text.split_whitespace().next().map(str::to_owned);
+    }
+    let sha256 = sha256
+        .filter(|s| s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()))
+        .ok_or_else(|| format!("The latest release has no checksum for {name}; it is not installed unverified."))?;
     Ok(Latest {
         version: Version::parse(tag).ok_or_else(|| format!("The latest release's tag ({tag}) is not a version."))?,
         url: asset["browser_download_url"].as_str().unwrap_or_default().to_owned(),
-        sha256: asset["digest"].as_str().and_then(|d| d.strip_prefix("sha256:")).map(str::to_owned),
+        name,
+        sha256,
     })
 }
 
 fn download(url: &str, to: &Path) -> R<()> {
-    let resp = agent().get(url).set("User-Agent", "HorizonVR-Installer").call().map_err(|e| e.to_string())?;
+    let resp = get(url).call().map_err(|e| net_error(url, e))?;
     let mut f = fs::File::create(to).map_err(|e| format!("{}: {e}", to.display()))?;
-    std::io::copy(&mut resp.into_reader(), &mut f).map_err(|e| e.to_string())?;
+    std::io::copy(&mut resp.into_reader(), &mut f).map_err(|e| format!("The download was interrupted ({e})."))?;
+    Ok(())
+}
+
+/// Downloads `url` into `part`, going on from what an interrupted download left there (HTTP
+/// Range). A server that sends the whole file again (200) starts it over.
+pub fn download_resume(url: &str, part: &Path, say: Say) -> R<()> {
+    use std::io::Write;
+    let have = fs::metadata(part).map_or(0, |m| m.len());
+    let mut req = get(url);
+    if have > 0 {
+        req = req.set("Range", &format!("bytes={have}-"));
+    }
+    let resp = match req.call() {
+        // Already whole: the checksum says whether it is right.
+        Err(ureq::Error::Status(416, _)) if have > 0 => return Ok(()),
+        r => r.map_err(|e| net_error(url, e))?,
+    };
+    let resumed = resp.status() == 206
+        && resp.header("Content-Range").is_some_and(|c| c.starts_with(&format!("bytes {have}-")));
+    let start = if resumed { have } else { 0 };
+    let total = resp.header("Content-Length").and_then(|l| l.parse::<u64>().ok()).map(|l| l + start);
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(resumed)
+        .truncate(!resumed)
+        .open(part)
+        .map_err(|e| format!("{}: {e}", part.display()))?;
+    if resumed {
+        say(&format!("Going on with the download from {} MB...", have >> 20));
+    }
+    let mut r = resp.into_reader();
+    let mut buf = vec![0; 1 << 16];
+    let (mut done, mut shown) = (start, u64::MAX);
+    loop {
+        let n = r.read(&mut buf).map_err(|e| format!("The download was interrupted ({e}); trying again goes on from where it stopped."))?;
+        if n == 0 {
+            break;
+        }
+        f.write_all(&buf[..n]).map_err(|e| format!("{}: {e}", part.display()))?;
+        done += n as u64;
+        if let Some(t) = total.filter(|t| *t > 0) {
+            let pct = done * 100 / t;
+            if pct / 10 != shown / 10 {
+                shown = pct;
+                say(&format!("Downloading... {pct}% ({} of {} MB)", done >> 20, t >> 20));
+            }
+        }
+    }
+    if total.is_some_and(|t| done < t) {
+        return Err("The download was interrupted; trying again goes on from where it stopped.".into());
+    }
     Ok(())
 }
 
@@ -213,19 +306,23 @@ fn release_root(dir: &Path) -> Option<PathBuf> {
 
 /// Downloads and unzips a release; returns the folder holding its installer and files\.
 pub fn get_release(latest: &Latest, say: Say) -> R<PathBuf> {
+    // The download keeps its place across tries (one folder per release); the unzip is fresh.
+    let downloads = env::temp_dir().join("horizonvr-download").join(latest.version.to_string());
+    fs::create_dir_all(&downloads).map_err(|e| format!("{}: {e}", downloads.display()))?;
+    let part = downloads.join(format!("{}.part", latest.name));
+    say(&format!("Downloading Horizon VR {}...", latest.version));
+    download_resume(&latest.url, &part, say)?;
+    if !file_hash::<sha2::Sha256>(&part).is_some_and(|h| h.eq_ignore_ascii_case(&latest.sha256)) {
+        let _ = fs::remove_file(&part);
+        return Err("The downloaded release did not match its checksum. Try again.".into());
+    }
     let work = env::temp_dir().join(format!("horizonvr-update-{}", std::process::id()));
     let _ = fs::remove_dir_all(&work);
     fs::create_dir_all(&work).map_err(|e| e.to_string())?;
-    let zip = work.join("HorizonVR-Installer.zip");
-    say(&format!("Downloading Horizon VR {}...", latest.version));
-    download(&latest.url, &zip)?;
-    if let Some(sha) = &latest.sha256
-        && !file_hash::<sha2::Sha256>(&zip).is_some_and(|h| h.eq_ignore_ascii_case(sha))
-    {
-        return Err("The downloaded release did not match its checksum. Try again.".into());
-    }
-    let f = fs::File::open(&zip).map_err(|e| e.to_string())?;
+    // `extract` keeps every entry inside `work` (it skips names that would leave it).
+    let f = fs::File::open(&part).map_err(|e| e.to_string())?;
     zip::ZipArchive::new(f).and_then(|mut z| z.extract(&work)).map_err(|e| format!("Unzipping the release failed: {e}"))?;
+    let _ = fs::remove_file(&part);
     release_root(&work).ok_or_else(|| "The downloaded release is missing its game files.".into())
 }
 
@@ -447,10 +544,8 @@ pub fn install(dest: &str, mc: &str, server: &str, say: Say, src: Option<PathBuf
         return Ok(());
     }
     if !src.join(r"files\horizon-client.exe").exists() {
-        // An install folder fetches the release, even with its game deleted.
-        if !is_install_folder(&h) {
-            return Err("The game files are missing. Unzip the whole HorizonVR-Installer.zip and run the installer from the unzipped folder.".into());
-        }
+        // The small installer on its own (or an install folder's copy): the game comes from the
+        // latest release.
         src = get_release(&get_latest()?, say)?;
     }
     if !mc.join(r"versions\26.3\26.3.jar").exists() {
@@ -656,12 +751,16 @@ fn add_launcher_instance(dest: &Path, say: Say) -> R<()> {
         Some(s) => drop(run(&hz_exe, &["settings", "selected-version", &s], dest, say)),
         None => {
             let file = launcher().join("settings.json");
-            if let Ok(text) = fs::read_to_string(&file) {
-                let mut v: Value = serde_json::from_str(&text).unwrap_or_default();
-                if v.get("selected").and_then(Value::as_str).is_some_and(|s| s.starts_with("imported-")) {
-                    v["selected"] = Value::Null;
-                    let _ = fs::write(&file, serde_json::to_string_pretty(&v).unwrap_or(text));
+            // Only that value changes: the rest of the file stays as the launcher wrote it.
+            if let Ok(text) = fs::read_to_string(&file)
+                && let Some(s) = serde_json::from_str::<Value>(&text).ok().and_then(|v| v["selected"].as_str().map(str::to_owned))
+                && s.starts_with("imported-")
+            {
+                let mut out = text.clone();
+                for sep in [": ", ":"] {
+                    out = out.replacen(&format!("\"selected\"{sep}\"{s}\""), "\"selected\": null", 1);
                 }
+                let _ = fs::write(&file, out);
             }
         }
     }
@@ -867,6 +966,61 @@ mod tests {
         let mut s = seen.into_inner();
         s.sort();
         assert_eq!(s.join(","), "err1,err2,out1,out2");
+    }
+
+    /// A one-request-at-a-time HTTP server for `body`; `ranges` says whether it honours Range.
+    fn serve(body: Vec<u8>, ranges: bool, requests: usize) -> String {
+        use std::io::Write;
+        let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/f", l.local_addr().unwrap());
+        std::thread::spawn(move || {
+            for s in l.incoming().take(requests) {
+                let mut s = s.unwrap();
+                let mut req = Vec::new();
+                let mut b = [0u8; 1];
+                while !req.ends_with(b"\r\n\r\n") && s.read(&mut b).unwrap_or(0) == 1 {
+                    req.push(b[0]);
+                }
+                let req = String::from_utf8_lossy(&req).to_ascii_lowercase();
+                let from = req
+                    .lines()
+                    .find_map(|l| l.strip_prefix("range: bytes="))
+                    .and_then(|r| r.trim_end_matches('-').parse::<usize>().ok())
+                    .filter(|_| ranges);
+                let head = match from {
+                    Some(f) => format!(
+                        "HTTP/1.1 206 Partial Content\r\nContent-Range: bytes {f}-{}/{}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len() - 1,
+                        body.len(),
+                        body.len() - f
+                    ),
+                    None => format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len()),
+                };
+                let _ = s.write_all(head.as_bytes());
+                let _ = s.write_all(&body[from.unwrap_or(0)..]);
+            }
+        });
+        url
+    }
+
+    #[test]
+    fn download_resumes_and_restarts() {
+        let body: Vec<u8> = (0..200_000u32).map(|i| (i * 7) as u8).collect();
+        let dir = env::temp_dir().join(format!("horizonvr-dl-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let part = dir.join("p.part");
+        // Interrupted at 70000 bytes: the rest is asked for and appended.
+        fs::write(&part, &body[..70_000]).unwrap();
+        let said = std::cell::RefCell::new(String::new());
+        download_resume(&serve(body.clone(), true, 1), &part, &|t| said.borrow_mut().push_str(t)).unwrap();
+        assert_eq!(fs::read(&part).unwrap(), body, "resumed");
+        assert!(said.borrow().contains("Going on"));
+        // A server that ignores Range sends it all again: started over, not appended.
+        fs::write(&part, &body[..70_000]).unwrap();
+        download_resume(&serve(body.clone(), false, 1), &part, &|_| {}).unwrap();
+        assert_eq!(fs::read(&part).unwrap(), body, "restarted");
+        // A wrong .part (not a prefix) is caught by the checksum, not here: the hash differs.
+        let _ = fs::remove_dir_all(&dir);
     }
 
     /// One test: the env vars it sets are the whole process's.

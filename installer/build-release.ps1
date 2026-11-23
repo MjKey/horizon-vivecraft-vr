@@ -54,6 +54,21 @@ $exe = Join-Path $PSScriptRoot 'app\target\release\HorizonVR-Installer.exe'
 Copy-Item $exe $stage
 Copy-Item $exe $files
 Copy-Item (Join-Path $PSScriptRoot 'HorizonVR-Installer.ps1'), (Join-Path $PSScriptRoot 'Install Horizon VR.bat') $stage
+# The release's assets: the small installer players download (it fetches the payload), the
+# payload with its SHA-256 beside it, and the whole zip older installers' Update still asks for.
+foreach ($f in 'horizon-client.exe', 'horizon-prepare.exe', 'openxr_loader.dll', 'research-lock.json', 'version.txt', 'horizon-base.txt', 'HorizonVR-Installer.exe', 'Play Horizon VR.bat', 'exporters\manifest.json') {
+    if (-not (Test-Path (Join-Path $files $f))) { throw "files\$f is missing" }
+}
+Copy-Item $exe $out
+$payload = Join-Path $out 'HorizonVR-Payload.zip'
+Compress-Archive -Path $files -DestinationPath $payload
+$hash = (Get-FileHash $payload -Algorithm SHA256).Hash.ToLower()
+[IO.File]::WriteAllText("$payload.sha256", "$hash  HorizonVR-Payload.zip`n")
 Compress-Archive -Path $stage -DestinationPath (Join-Path $out 'HorizonVR-Installer.zip')
-Write-Host "Made $(Join-Path $out 'HorizonVR-Installer.zip')"
+Write-Host "Upload these 4 files to the release v${version}:"
+foreach ($f in 'HorizonVR-Installer.exe', 'HorizonVR-Payload.zip', 'HorizonVR-Payload.zip.sha256', 'HorizonVR-Installer.zip') {
+    $i = Get-Item (Join-Path $out $f)
+    Write-Host ("  {0,-30} {1,8:N1} MB  {2}" -f $f, ($i.Length / 1MB), (Get-FileHash $i.FullName -Algorithm SHA256).Hash.ToLower())
+}
+if ((Get-Item (Join-Path $out 'HorizonVR-Installer.exe')).Length -gt 5MB) { throw 'HorizonVR-Installer.exe is over 5 MB' }
 

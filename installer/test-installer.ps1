@@ -1,4 +1,4 @@
-# Checks each installer bug that was fixed, against an unzipped HorizonVR-Installer.zip.
+﻿# Checks each installer bug that was fixed, against an unzipped HorizonVR-Installer.zip.
 # Run after build-release.ps1. Uses the Horizon launcher's (or .minecraft's) Minecraft 26.3 and
 # server jar on this PC. Installs into a temporary folder; removes the desktop shortcut it makes.
 param([string]$Zip = (Join-Path $PSScriptRoot 'out\HorizonVR-Installer.zip'))
@@ -8,13 +8,13 @@ New-Item -ItemType Directory -Force $work | Out-Null
 Expand-Archive $Zip $work
 $installer = Join-Path $work 'HorizonVR-Installer\HorizonVR-Installer.exe'
 $dest = Join-Path $work 'install dir'
-$shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Horizon VR.lnk'
-$hadShortcut = Test-Path $shortcut
-$hadStartMenu = Test-Path (Join-Path ([Environment]::GetFolderPath('Programs')) 'Horizon VR Installer.lnk')
+# The shortcuts go to a test folder, not the real Desktop and Start menu.
+$env:HORIZONVR_SHORTCUTS = Join-Path $work 'links'
+$shortcut = Join-Path $env:HORIZONVR_SHORTCUTS 'Horizon VR.lnk'
 $failed = 0
 # Leave the player's Horizon launcher alone (its instance is checked by hand).
 $env:HORIZONVR_LAUNCHER = Join-Path $work 'no-launcher.exe'
-$startMenuLink = Join-Path ([Environment]::GetFolderPath('Programs')) 'Horizon VR Installer.lnk'
+$startMenuLink = Join-Path $env:HORIZONVR_SHORTCUTS 'Horizon VR Installer.lnk'
 
 function Check($name, $ok) {
     if ($ok) { Write-Host "PASS  $name" -ForegroundColor Green }
@@ -54,12 +54,14 @@ Check 'JDK 17 is refused, 25 accepted' (((& $major 'javac 17.0.2') -lt 25) -and 
 $r = Silent @('-InstallDir', $dest, '-ServerJar', (Join-Path $fakeHome 'Downloads\server-1.21.4.jar'))
 Check 'a wrong server jar is refused' ($r.Code -eq 1 -and $r.Out -match 'server jar')
 
-# The installer alone, without the files beside it, says to unzip.
+# The small installer alone downloads the game; offline it says so.
 $alone = Join-Path $work 'alone'
 New-Item -ItemType Directory -Force $alone | Out-Null
 Copy-Item $installer $alone
+$env:HORIZONVR_RELEASES = 'http://127.0.0.1:1/latest.json'
 $r = Exe (Join-Path $alone 'HorizonVR-Installer.exe') @('-Silent', '-InstallDir', $dest, '-ServerJar', $jar)
-Check 'missing game files say to unzip' ($r.Code -eq 1 -and $r.Out -match 'Unzip')
+Remove-Item Env:HORIZONVR_RELEASES
+Check 'the small installer offline says so' ($r.Code -eq 1 -and $r.Out -match 'internet')
 
 # A file errors stops the install (the install folder is a file here).
 $asFile = Join-Path $work 'a file'
@@ -127,22 +129,32 @@ $r = Silent @('-Repair', '-InstallDir', $dest)
 Check 'repair restores a broken install' ($r.Code -eq 0 -and (Test-Path (Join-Path $dest 'horizon-client.exe')) -and
     -not (Test-Path (Join-Path $dest '.local\horizon-client\26.3\broken.txt')) -and (Test-Path (Join-Path $dest '.local\horizon-client\26.3')))
 
-# Update: a fake newer release (this zip, as 9.9.9) served the way GitHub's API gives it.
 Check 'install copies the installer and its version' ((Test-Path (Join-Path $dest 'HorizonVR-Installer.exe')) -and
     (Test-Path (Join-Path $dest 'version.txt')))
+# Older installers' Update takes HorizonVR-Installer.zip: its layout stays theirs.
+Check 'the old installers'' zip keeps its layout' ((Test-Path (Join-Path $work 'HorizonVR-Installer\HorizonVR-Installer.ps1')) -and
+    (Test-Path (Join-Path $work 'HorizonVR-Installer\files\horizon-client.exe')))
+
+# Update: a fake newer release (this payload, as 9.9.9) served the way GitHub's API gives it.
 $serve = Join-Path $work 'serve'
 $newer = Join-Path $work 'newer'
 New-Item -ItemType Directory -Force $serve | Out-Null
-Expand-Archive $Zip $newer
-Set-Content (Join-Path $newer 'HorizonVR-Installer\files\version.txt') '9.9.9'
-Compress-Archive (Join-Path $newer 'HorizonVR-Installer') (Join-Path $serve 'HorizonVR-Installer.zip')
+Copy-Item -Recurse (Join-Path $work 'HorizonVR-Installer\files') (Join-Path $newer 'files')
+Set-Content (Join-Path $newer 'files\version.txt') '9.9.9'
+$payload = Join-Path $serve 'HorizonVR-Payload.zip'
+Compress-Archive (Join-Path $newer 'files') $payload
+$payloadSha = (Get-FileHash $payload -Algorithm SHA256).Hash.ToLower()
+Set-Content "$payload.sha256" "$payloadSha  HorizonVR-Payload.zip"
 $port = 18765
-function Write-Release($sha) {
-    @{ tag_name = 'v9.9.9'; assets = @(@{ name = 'HorizonVR-Installer.zip'
-        browser_download_url = "http://127.0.0.1:$port/HorizonVR-Installer.zip"; digest = "sha256:$sha" }) } |
-        ConvertTo-Json -Depth 4 | Set-Content (Join-Path $serve 'latest.json')
+# $digest: GitHub's (none: only the .sha256 file says it); $sidecar: that file is listed.
+function Write-Release($digest, [bool]$sidecar) {
+    $a = @{ name = 'HorizonVR-Payload.zip'; browser_download_url = "http://127.0.0.1:$port/HorizonVR-Payload.zip" }
+    if ($digest) { $a.digest = "sha256:$digest" }
+    $assets = @($a)
+    if ($sidecar) { $assets += @{ name = 'HorizonVR-Payload.zip.sha256'; browser_download_url = "http://127.0.0.1:$port/HorizonVR-Payload.zip.sha256" } }
+    @{ tag_name = 'v9.9.9'; assets = $assets } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $serve 'latest.json')
 }
-Write-Release ('0' * 64)
+Write-Release ('0' * 64) $false
 $server = Start-Process python -ArgumentList '-m', 'http.server', $port, '--bind', '127.0.0.1' -WorkingDirectory $serve -PassThru -WindowStyle Hidden
 Start-Sleep 2
 $env:HORIZONVR_RELEASES = "http://127.0.0.1:$port/latest.json"
@@ -151,7 +163,11 @@ function FromInstall([string[]]$more) { Exe $installedCopy (@('-Silent') + $more
 $r = FromInstall @('-Update')
 Check 'update refuses a download with the wrong checksum' ($r.Code -eq 1 -and $r.Out -match 'checksum' -and
     (Get-Content (Join-Path $dest 'version.txt')).Trim() -ne '9.9.9')
-Write-Release (Get-FileHash (Join-Path $serve 'HorizonVR-Installer.zip') -Algorithm SHA256).Hash
+Write-Release $null $false
+$r = FromInstall @('-Update')
+Check 'update refuses a release without a checksum' ($r.Code -eq 1 -and $r.Out -match 'checksum' -and
+    (Get-Content (Join-Path $dest 'version.txt')).Trim() -ne '9.9.9')
+Write-Release $null $true
 $r = FromInstall @('-Update')
 Check 'update installs the newer release' ($r.Code -eq 0 -and (Get-Content (Join-Path $dest 'version.txt')).Trim() -eq '9.9.9')
 $r = FromInstall @('-Update')
@@ -166,6 +182,10 @@ $env:HORIZONVR_RELEASES = "http://127.0.0.1:$port/latest.json"
 Remove-Item (Join-Path $dest 'horizon-client.exe')
 $r = FromInstall @()
 Check 'the installed installer reinstalls from the latest release' ($r.Code -eq 0 -and (Test-Path (Join-Path $dest 'horizon-client.exe')))
+# The small installer on its own (as players download it) installs from the payload.
+Remove-Item (Join-Path $dest 'horizon-client.exe')
+$r = Exe (Join-Path $alone 'HorizonVR-Installer.exe') @('-Silent', '-InstallDir', $dest)
+Check 'the small installer alone downloads and installs the game' ($r.Code -eq 0 -and (Test-Path (Join-Path $dest 'horizon-client.exe')) -and $r.Out -match 'Downloading')
 Stop-Process $server -ErrorAction SilentlyContinue
 Remove-Item Env:HORIZONVR_RELEASES
 
@@ -197,10 +217,8 @@ Get-ChildItem $dest -Force | Where-Object Name -in $left | Remove-Item -Recurse 
 $r = Silent @('-Uninstall', '-InstallDir', $dest)
 Check 'uninstall removes an empty install folder' ($r.Code -eq 0 -and -not (Test-Path $dest))
 
-if (-not $hadShortcut) { Remove-Item $shortcut -ErrorAction SilentlyContinue }
-if (-not $hadStartMenu) { Remove-Item $startMenuLink -ErrorAction SilentlyContinue }
 Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
-Remove-Item Env:HORIZONVR_LAUNCHER, Env:HORIZONVR_RELEASES -ErrorAction SilentlyContinue
+Remove-Item Env:HORIZONVR_LAUNCHER, Env:HORIZONVR_RELEASES, Env:HORIZONVR_SHORTCUTS -ErrorAction SilentlyContinue
 if ($failed) { Write-Host "$failed check(s) failed" -ForegroundColor Red; exit 1 }
 Write-Host 'All checks passed' -ForegroundColor Green
 

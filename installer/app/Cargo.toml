@@ -24,6 +24,8 @@ windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_Wind
 embed-resource = "3"
 
 [profile.release]
-opt-level = "s"
+opt-level = "z"
 lto = true
 strip = true
+codegen-units = 1
+panic = "abort"

@@ -55,8 +55,13 @@ fn set_text(h: HWND, s: &str) {
 /// Posts `value` to the window; the window thread takes the box back.
 fn post<T>(hwnd: isize, msg: u32, value: T) {
     let p = Box::into_raw(Box::new(value));
-    // SAFETY: the window procedure turns `p` back into its box for each of these messages.
-    unsafe { PostMessageW(hwnd as HWND, msg, 0, p as LPARAM) };
+    // SAFETY: the window procedure turns `p` back into its box for each of these messages; when
+    // the window is gone already, nothing will, so it is freed here.
+    unsafe {
+        if PostMessageW(hwnd as HWND, msg, 0, p as LPARAM) == 0 {
+            drop(Box::from_raw(p));
+        }
+    }
 }
 
 fn child(parent: HWND, class: &str, text: &str, style: u32, ex: u32, x: i32, y: i32, w: i32, h: i32, id: usize) -> HWND {
