@@ -51,6 +51,8 @@ pub(crate) struct VrSettings {
     pub weapon_collision: bool,
     /// `renderInGameCrosshairMode` ALWAYS, else NEVER.
     pub crosshair: bool,
+    /// `useFOVReduction`: darken the eyes' edges while walking (comfort vignette).
+    pub fov_reduction: bool,
 }
 
 /// `VRSettings.MirrorMode` (the ones the port draws).
@@ -93,6 +95,7 @@ impl Default for VrSettings {
             debug_player_axes: false,
             weapon_collision: true,
             crosshair: true,
+            fov_reduction: false,
         }
     }
 }
@@ -197,6 +200,7 @@ impl Store for Lines {
                 "renderDebugPlayerAxes" => flag(&mut s.debug_player_axes),
                 "weaponCollision" => flag(&mut s.weapon_collision),
                 "crosshair" => flag(&mut s.crosshair),
+                "fovReduction" => flag(&mut s.fov_reduction),
                 "displayMirrorMode" => {
                     s.mirror = match value {
                         "THIRD_PERSON" => Mirror::ThirdPerson,
@@ -249,6 +253,7 @@ impl Store for Lines {
             ("vr.renderDebugPlayerAxes", s.debug_player_axes),
             ("vr.weaponCollision", s.weapon_collision),
             ("vr.crosshair", s.crosshair),
+            ("vr.fovReduction", s.fov_reduction),
         ] {
             line(k, b(v));
         }
@@ -259,7 +264,7 @@ impl Store for Lines {
 }
 
 /// The page's rows, in order.
-const ROWS: [&str; 25] = [
+const ROWS: [&str; 26] = [
     "vivecraft.options.FREEMOVE_MODE",
     "vivecraft.options.WORLD_ROTATION_INCREMENT",
     "vivecraft.options.WORLD_SCALE",
@@ -285,6 +290,7 @@ const ROWS: [&str; 25] = [
     "vivecraft.options.RENDER_DEBUG_PLAYER_AXES",
     "vivecraft.options.WEAPON_COLLISION",
     "vivecraft.options.crosshair",
+    "vivecraft.options.FOV_REDUCTION",
 ];
 
 pub(crate) static PAGE: VrPage = VrPage;
@@ -417,6 +423,7 @@ impl VrPage {
             22 => &mut s.debug_player_axes,
             23 => &mut s.weapon_collision,
             24 => &mut s.crosshair,
+            25 => &mut s.fov_reduction,
             _ => return None,
         })
     }
@@ -460,7 +467,8 @@ static LANG: &horizon_hooks::lang::Files = &[("en_us", r#"{
 "vivecraft.options.RENDER_DEBUG_DEVICE_AXES": "Local Device Axes",
 "vivecraft.options.RENDER_DEBUG_PLAYER_AXES": "Remote Device Axes",
 "vivecraft.options.WEAPON_COLLISION": "Weapon Collision",
-"vivecraft.options.crosshair": "Crosshair"
+"vivecraft.options.crosshair": "Crosshair",
+"vivecraft.options.FOV_REDUCTION": "Comfort Vignette"
 }"#)];
 
 /// Registers the settings' file, their page and their names. Before the game starts.
@@ -470,4 +478,18 @@ pub(crate) fn register() -> Result<(), horizon_hooks::TooLate> {
     horizon_hooks::lang::register(LANG)?;
     push(vr_settings());
     Ok(())
+}
+
+/// Vivecraft's FOV reduction (`PostProcessRenderState`): how dark the eyes' edges are this frame,
+/// 0 to 0.75. It closes in at 0.05 a tick while `moving` and opens at 0.01 a tick.
+pub(crate) fn comfort_vignette(moving: bool) -> f32 {
+    static STATE: Mutex<(f32, Option<std::time::Instant>)> = Mutex::new((0.0, None));
+    let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+    let now = std::time::Instant::now();
+    let ticks = s.1.map_or(0.0, |t| (now - t).as_secs_f32().min(0.1) * 20.0);
+    s.1 = Some(now);
+    let on = moving && vr_settings().fov_reduction;
+    let step = if on { 0.05 } else { -0.01 };
+    s.0 = (s.0 + step * ticks).clamp(0.0, 0.75);
+    s.0
 }

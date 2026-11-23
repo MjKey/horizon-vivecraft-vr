@@ -1270,10 +1270,10 @@ index a03f68ea43..94af479555 100644
              && self.sign_edit.is_none()
              && self.server_packs.prompt.is_none()
 diff --git a/crates/horizon-client/src/game/interface/render_tick.rs b/crates/horizon-client/src/game/interface/render_tick.rs
-index 63b7564382..a88de42871 100644
+index 63b7564382..e46e4f1fa8 100644
 --- a/crates/horizon-client/src/game/interface/render_tick.rs
 +++ b/crates/horizon-client/src/game/interface/render_tick.rs
-@@ -335,24 +335,70 @@ impl Game<'_> {
+@@ -335,24 +335,74 @@ impl Game<'_> {
              p.position.z,
          ];
          let mut effects = self.block_screen_effects(p, eye, partial, size, scale);
@@ -1294,6 +1294,8 @@ index 63b7564382..a88de42871 100644
 +            } else {
 +                0.0
 +            };
++            let moving = p.applied_input.iter().any(|v| v.abs() > 0.0);
++            let comfort = super::vr_settings::comfort_vignette(moving);
 +            let pulse = {
 +                let ms = std::time::SystemTime::now()
 +                    .duration_since(std::time::UNIX_EPOCH)
@@ -1316,6 +1318,8 @@ index 63b7564382..a88de42871 100644
 +                Some(([0.8, 0.0, 0.0, 0.25 + 0.25 * pulse], 1.0))
 +            } else if border > 0.0 {
 +                Some(([0.8, 0.0, 0.0, 0.6 * border], 1.0))
++            } else if comfort > 0.0 {
++                Some(([0.0, 0.0, 0.0, comfort], 1.0))
 +            } else {
 +                None
 +            };
@@ -1348,7 +1352,7 @@ index 63b7564382..a88de42871 100644
              game_time_delta: 0.0,
              equipment: [
                  (self.inventory[self.selected].as_ref(), "mainhand"),
-@@ -369,6 +415,10 @@ impl Game<'_> {
+@@ -369,6 +419,10 @@ impl Game<'_> {
                      return None;
                  }
                  let overlay = e.camera_overlay?;
@@ -1359,7 +1363,7 @@ index 63b7564382..a88de42871 100644
                  Some(
                      overlay
                          .strip_prefix("minecraft:")
-@@ -376,11 +426,11 @@ impl Game<'_> {
+@@ -376,11 +430,11 @@ impl Game<'_> {
                  )
              })
              .collect(),
@@ -1375,7 +1379,7 @@ index 63b7564382..a88de42871 100644
              screen_effect_scale: self.screen_effect_scale(),
          };
          let mut scope = self.scope_scale;
-@@ -393,7 +443,7 @@ impl Game<'_> {
+@@ -393,7 +447,7 @@ impl Game<'_> {
              partial,
              block_overlay,
              water,
