@@ -3,8 +3,8 @@
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
 $horizon = Join-Path $here 'horizon'
-# The Horizon commit the patch was made against.
-$commit = '6d765e0'
+# The Horizon base snapshot the patch was made against.
+$horizonUrl = 'https://horizon-mirror.nikitagrimm.de/horizon-source.tar.gz'
 
 function Need($cmd, $what, $url) {
     if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
@@ -22,12 +22,26 @@ if ([int]($javaVersion.Split('.')[0]) -lt 25) {
 }
 
 if (-not (Test-Path $horizon)) {
-    Write-Host 'Downloading Horizon...'
-    git clone https://github.com/horizon-rust/horizon.git $horizon
-    if ($LASTEXITCODE) { exit 1 }
+    Write-Host 'Downloading Horizon source archive...'
+    $tar = Join-Path $here 'horizon-source.tar.gz'
+    Invoke-WebRequest -Uri $horizonUrl -OutFile $tar -UseBasicParsing
+    New-Item -ItemType Directory -Force $horizon | Out-Null
+    tar -xf $tar -C $horizon --strip-components=1
+    if ($LASTEXITCODE -or -not (Test-Path (Join-Path $horizon 'Cargo.toml'))) {
+        tar -xf $tar -C $horizon
+        $sub = Get-ChildItem -Directory $horizon | Select-Object -First 1
+        if ($sub -and (Test-Path (Join-Path $sub.FullName 'Cargo.toml'))) {
+            Get-ChildItem -Force $sub.FullName | Move-Item -Destination $horizon
+            Remove-Item -Recurse -Force $sub.FullName
+        }
+    }
+    Remove-Item -Force $tar -ErrorAction SilentlyContinue
+    git -C $horizon init -q
+    git -C $horizon config user.name 'Horizon VR'
+    git -C $horizon config user.email 'horizon-vr@local'
+    git -C $horizon add -A
+    git -C $horizon commit -qm 'horizon base'
 }
-git -C $horizon checkout -q $commit
-if ($LASTEXITCODE) { Write-Host "Can't find Horizon commit $commit." -ForegroundColor Red; exit 1 }
 
 Write-Host 'Adding the VR code...'
 Copy-Item -Recurse -Force (Join-Path $here 'crates\horizon-vr') (Join-Path $horizon 'crates\')

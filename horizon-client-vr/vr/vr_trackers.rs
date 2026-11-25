@@ -99,6 +99,7 @@ pub(super) struct Trackers {
     pub backpack: BackpackTracker,
     pub swim: SwimTracker,
     pub teleport: super::vr_teleport::TeleportTracker,
+    pub throw: super::vr_throw::ThrowTracker,
     /// The triggers (main, offhand) at the last tick, for presses.
     pub last_trigger: [bool; 2],
     /// Inputs for the next tick's movement keys (`player.jumpFromGround`, `sneakOverride`).
@@ -172,7 +173,7 @@ pub(super) struct BowTracker {
     pub active: bool,
     can_draw: bool,
     pub drawing: bool,
-    was_drawing: bool,
+    pub was_drawing: bool,
     ts_notch: Option<Instant>,
     start_draw: Option<Instant>,
     current_draw: f32,
@@ -398,6 +399,7 @@ impl Game<'_> {
         self.vr_swim_tracker(data);
         self.vr_teleport_tracker(data)?;
         self.vr_swing_tracker(data)?;
+        self.vr_throw_tracker(data);
         if let (Some(vr), Some(pad)) = (vr_player().as_mut(), horizon_vr::pad()) {
             vr.trackers.last_trigger = [pad.triggers[1] > 0.5, pad.triggers[0] > 0.5];
         }
@@ -625,7 +627,10 @@ impl Game<'_> {
                 if already.contains(&id) || !entity_act {
                     continue;
                 }
+                self.vr_net_active_hand(c as u8, true);
+                self.vr_net_roomscale_attack(true, 1);
                 self.vr_attack_mob(k, hand);
+                self.vr_net_roomscale_attack(false, 0);
                 horizon_vr::haptic(c, 1000);
                 in_entity = true;
             }
@@ -717,9 +722,13 @@ impl Game<'_> {
                         // Roomscale door punching (`doorHitting`).
                         self.vr_use_on(hit, hand)?;
                     } else if name.ends_with("note_block") {
+                        self.vr_net_roomscale_attack(true, 1);
                         self.vr_roomscale_mine(hit.pos, face_index(hit.face), 1, hand)?;
+                        self.vr_net_roomscale_attack(false, 1);
                     } else {
+                        self.vr_net_roomscale_attack(true, total_hits.min(255) as u8);
                         let still = self.vr_roomscale_mine(hit.pos, face_index(hit.face), total_hits, hand)?;
+                        self.vr_net_roomscale_attack(false, total_hits.min(255) as u8);
                         if let Some(vr) = vr_player().as_mut() {
                             vr.trackers.swing.last_hit = still.then_some(hit.pos);
                         }

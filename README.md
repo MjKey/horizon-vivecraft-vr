@@ -2,90 +2,55 @@
 
 # Horizon Vivecraft VR
 
-[![Download](https://img.shields.io/github/v/release/v1nx0/horizon-vivecraft-vr?label=Download&color=2ea44f)](https://github.com/v1nx0/horizon-vivecraft-vr/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/v1nx0/horizon-vivecraft-vr/total?color=blue)](https://github.com/v1nx0/horizon-vivecraft-vr/releases)
-[![Bitcoin](https://img.shields.io/badge/Bitcoin-donate-F7931A?logo=bitcoin&logoColor=white)](#donate)
-[![Solana](https://img.shields.io/badge/Solana-donate-9945FF?logo=solana&logoColor=white)](#donate)
+[![Download](https://img.shields.io/github/v/release/MjKey/horizon-vivecraft-vr?label=Download&color=2ea44f)](https://github.com/MjKey/horizon-vivecraft-vr/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/MjKey/horizon-vivecraft-vr/total?color=blue)](https://github.com/MjKey/horizon-vivecraft-vr/releases)
 
-Play Minecraft 26.3 in VR on the [Horizon](https://github.com/horizon-rust/horizon) client: a port
-of [VivecraftMod](https://github.com/Vivecraft/VivecraftMod) using OpenXR (SteamVR, Quest Link).
+Play Minecraft 26.3 in VR on Horizon: a port of
+[VivecraftMod](https://github.com/Vivecraft/VivecraftMod) and
+[VR-Throwing-Extensions](https://github.com/demistorm/VR-Throwing-Extensions) using OpenXR
+(SteamVR, Oculus/Meta Touch, Valve Index, HTC Vive, Windows Mixed Reality), forked and extended
+from [v1nx0/horizon-vivecraft-vr](https://github.com/v1nx0/horizon-vivecraft-vr).
 
 ## Requirements
 
-- Windows 10 or 11 and a VR headset that works with SteamVR.
-- Minecraft Java Edition 26.3, played once (in the Horizon launcher or the Minecraft Launcher).
-- The Minecraft 26.3 server jar. If the Horizon launcher already downloaded it, it's found
-  automatically. Otherwise, download it from minecraft.net.
+- Windows 10 or 11 and a VR headset compatible with SteamVR / OpenXR.
+- Minecraft Java Edition 26.3, played once (in the Horizon launcher or the official Minecraft Launcher).
+- The Minecraft 26.3 server jar (found automatically if the Horizon launcher already downloaded it, or from minecraft.net).
 
 ## Install
 
-1. Download `HorizonVR-Installer.exe` (under 2 MB) from [Releases](https://github.com/v1nx0/horizon-vivecraft-vr/releases/latest) and open it.
-2. Check the three paths (install folder, Minecraft folder, server jar) and click **Install**. It downloads the game (about 55 MB).
-3. Start SteamVR, then open **Horizon VR** on your desktop.
+1. Download `HorizonVR-Installer.exe` from [Releases](https://github.com/MjKey/horizon-vivecraft-vr/releases/latest) and run it.
+2. Check the install folder, Minecraft folder, and server jar path, then click **Install** (downloads `HorizonVR-Payload.zip` and prepares game assets).
+3. Start SteamVR, then launch **Horizon VR** from your desktop or the Horizon launcher.
 
-With the [Horizon launcher](https://github.com/horizon-rust/horizon) installed, the installer also
-adds a **Horizon VR** instance to it: start SteamVR, then pick Horizon VR in the launcher and click
-Play. It plays with the launcher's Microsoft account. The instance stays on the Horizon nightly the
-mod is built on (the launcher downloads it if needed); your other instances are untouched.
-
-Pause menu: hold **Y** on the left controller. A short tap of Y opens the inventory.
-
-When a new version is out, Horizon VR asks when you start it: **Yes** updates now, **No** asks again next time. You can also open **Horizon VR Installer** from the Start menu: it shows when a new version is out, and
-**Update** downloads and installs it (the installer updates itself too).
-
-Something broke? Open it and click **Repair**: it reinstalls the game and prepares the
-Minecraft files again. **Uninstall** removes Horizon VR and its shortcut, and keeps your worlds and
-settings.
+Pause menu: hold **Y** on the left controller. A short tap of **Y** opens the inventory.
 
 ## Features
 
-- Roomscale head and hand tracking, snap turn, teleport, and menus shown in front of you.
-- Vivecraft's climbing, crawling, swimming, bow and radial menu.
-- On servers with the Vivecraft plugin, other players see your VR body, and you see theirs: arms,
-  headset, and legs that follow full-body trackers.
-- Full-body tracking through OSC (SlimeVR and similar): VR Settings, then **OSC Trackers**.
-- Swing your pickaxe or sword to mine and hit (**Weapon Collision**), a VR keyboard for text boxes,
-  and a **Comfort Vignette** against motion sickness.
-- **Seated Mode** for playing sitting down.
-- A **Mods** entry on the ring menu: Fullbright, Zoom, FPS counter and coordinates.
+- **OpenXR & Multi-Controller Support**: Auto-discovers SteamVR `openxr_loader.dll` via Windows registry + `libraryfolders.vdf`; binds Meta/Oculus Touch, Valve Index, HTC Vive, WMR, and Khronos Simple Controller profiles.
+- **Asymmetric Stereo Rendering**: Uses OpenXR per-eye asymmetric FOV tangents, configurable `renderScaleFactor`, and early-Z corner masking (`stencilOn`).
+- **Roomscale & Seated Comfort**: Standing height calibration (`Calibrate Height`), seated eye calibration, per-frame smooth turning with adjustable speed, walking speed multiplier, and configurable auto-sprint threshold.
+- **VR Combat, AimFix & Multiplayer Protocol**: Shots from bows, crossbows, tridents, potions, pearls, and snowballs originate from hand/bow aim; VR bow headshots (3x roomscale / 2x seated); full Vivecraft C2S/S2C payloads (`HAPTIC`, `SETTING_OVERRIDE`, `SERVER_VR_CHANGES`, `DAMAGE_DIRECTION`, `DUAL_WIELDING`, `ATTACK_WHILE_BLOCKING`, `VR_SWITCHING`, `AIM_*_OVERRIDE`, `ROOMSCALE_ATTACK`, `ACTIVEHAND`).
+- **3D HUD & Face Effects**: Configurable HUD scale, distance, opacity, HUD hiding, optional physical GUI poke-touch, per-overlay toggles (pumpkin, portal, fire, water, nausea, low health), inside-block blackout with wall-grazing margin, plus the 2D on-screen keyboard.
+- **VR Throwing Extensions**: Grip-hold + swing-release throwing (or boosted Drop key), ballistic aim assist, thrown weapon impact damage, sharp weapon block embedding, boomerang return, and physical mid-air item catching.
+- **Full-Body Trackers & Radial Menu**: OSC full-body tracking (port 9000), climbing/claws, crawling, swimming, rowing, handheld camera, and mods ring menu.
 
-The full list, including what isn't ported, is in [`VR_PORT_STATUS.md`](VR_PORT_STATUS.md).
+Please report bugs in [Issues](https://github.com/MjKey/horizon-vivecraft-vr/issues).
 
-## Status
+## Build from source (or via GitHub Actions)
 
-Not fully tested in a headset. These have never been tested at all: Vivecraft server networking,
-other players' VR bodies, and full-body trackers. Please report bugs in
-[Issues](https://github.com/v1nx0/horizon-vivecraft-vr/issues).
+Cloud builds & releases run automatically on GitHub Actions (`.github/workflows/release.yml`) on every `v*` tag push or manual `workflow_dispatch`.
 
-## Build from source
-
-You need [Git](https://git-scm.com/download/win), [Rust](https://rustup.rs) and
-[JDK 25](https://adoptium.net). Download this repo and run `Install.bat`. It clones Horizon at
-commit `6d765e0`, adds the VR code, applies `horizon-hooks.patch`, builds the game and prepares the
-game files.
+To build locally on Windows (needs Git, Rust, and JDK 25), run `Install.bat` / `install.ps1`, which fetches the base Horizon snapshot (`horizon-source.tar.gz`), adds `crates/horizon-vr/` and `horizon-client-vr/vr/`, applies `horizon-hooks.patch`, builds with `cargo build --profile fast -p horizon-game -p horizon-prepare`, and prepares game files.
 
 | Path | What it holds |
 |---|---|
-| `crates/horizon-vr/` | The OpenXR runtime: headset, controllers, eye rendering |
-| `horizon-client-vr/vr/` | The game's VR modules (they go in `crates/horizon-client/src/game/vr/`) |
-| `horizon-hooks.patch` | The changes to Horizon's own files |
-| `installer/` | The installer (`app/`, Rust), `build-release.ps1` (makes the release files), `test-installer.ps1` |
+| `crates/horizon-vr/` | OpenXR runtime, controller profiles, stereo eye rendering, HUD/GUI panels |
+| `horizon-client-vr/vr/` | Game VR modules (`vr_player`, `vr_trackers`, `vr_throw`, `vr_net`, `vr_settings`, etc.) |
+| `horizon-hooks.patch` | Patches to Horizon's client & renderer crates |
+| `installer/` | GUI installer (`app/`), `build-release.ps1`, `test-installer.ps1` |
+| `.github/workflows/release.yml` | GitHub Actions workflow to test, build, and publish release assets |
 
 ## License
 
-LGPL-3.0, like Vivecraft. See [`LICENSE.md`](LICENSE.md). The ported code credits the Vivecraft
-files it comes from.
-
-## Donate
-
-Bitcoin:
-
-```
-bc1q0csyzscm725lu4vwf5tsxwg5vr32pgjujtpnh8
-```
-
-Solana:
-
-```
-HMmUu1qFiWqfHiW5DMvUix5Ai9THvnC6VRwYLRM8zbbs
-```
+LGPL-3.0, like Vivecraft. See [`LICENSE.md`](LICENSE.md).

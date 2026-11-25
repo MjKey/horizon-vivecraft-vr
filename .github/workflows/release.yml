@@ -1,0 +1,160 @@
+name: Build and Release Horizon VR
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Publish GitHub Release with installer and payload assets'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_PROFILE_TEST_DEBUG: 0
+  HORIZON_SOURCE_URL: https://horizon-mirror.nikitagrimm.de/horizon-source.tar.gz
+
+jobs:
+  build-windows:
+    name: Build Windows Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Cache Cargo registry and git dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('crates/horizon-vr/Cargo.toml', 'installer/app/Cargo.lock', 'horizon-hooks.patch') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Download and unpack Horizon base source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest -Uri $env:HORIZON_SOURCE_URL -OutFile horizon-source.tar.gz -UseBasicParsing
+          New-Item -ItemType Directory -Force horizon | Out-Null
+          tar -xf horizon-source.tar.gz -C horizon --strip-components=1
+          if ($LASTEXITCODE -or -not (Test-Path horizon\Cargo.toml)) {
+            Remove-Item -Recurse -Force horizon
+            New-Item -ItemType Directory -Force horizon | Out-Null
+            tar -xf horizon-source.tar.gz -C horizon
+            $sub = Get-ChildItem -Directory horizon | Select-Object -First 1
+            if ($sub -and (Test-Path (Join-Path $sub.FullName 'Cargo.toml'))) {
+              Get-ChildItem -Force $sub.FullName | Move-Item -Destination horizon
+              Remove-Item -Recurse -Force $sub.FullName
+            }
+          }
+          Remove-Item -Force horizon-source.tar.gz
+          if (-not (Test-Path horizon\Cargo.toml)) { throw 'horizon/Cargo.toml missing after unpack' }
+          git -C horizon init -q
+          git -C horizon config user.name 'ci'
+          git -C horizon config user.email 'ci@local'
+          git -C horizon add -A
+          git -C horizon commit -qm 'horizon base'
+
+      - name: Inject VR crates and apply hooks patch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Copy-Item -Recurse -Force crates\horizon-vr horizon\crates\
+          Copy-Item -Recurse -Force horizon-client-vr\vr horizon\crates\horizon-client\src\game\
+          git -C horizon apply --ignore-whitespace ..\horizon-hooks.patch
+
+      - name: Run unit tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Push-Location horizon
+          try {
+            cargo test -p horizon-vr
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            cargo test -p horizon-client-render --features vr --lib world_views
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            cargo test -p horizon-client --lib vr_
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          } finally {
+            Pop-Location
+          }
+
+      - name: Build Horizon client and preparer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Push-Location horizon
+          try {
+            cargo build --profile fast -p horizon-game -p horizon-prepare
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          } finally {
+            Pop-Location
+          }
+
+      - name: Fetch OpenXR Loader DLL (x64)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rel = Invoke-RestMethod -UseBasicParsing 'https://api.github.com/repos/KhronosGroup/OpenXR-SDK-Source/releases/latest'
+          $asset = $rel.assets | Where-Object { $_.name -match '^openxr_loader_windows-.*\.zip$' } | Select-Object -First 1
+          if (-not $asset) { throw 'Could not find openxr_loader_windows asset in KhronosGroup/OpenXR-SDK-Source' }
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile openxr_loader.zip -UseBasicParsing
+          New-Item -ItemType Directory -Force openxr_tmp | Out-Null
+          Expand-Archive -Path openxr_loader.zip -DestinationPath openxr_tmp -Force
+          $dll = Get-ChildItem -Recurse -File openxr_tmp -Filter 'openxr_loader.dll' |
+            Where-Object { $_.FullName -match '\\x64\\' } |
+            Select-Object -First 1
+          if (-not $dll) { throw 'x64 openxr_loader.dll not found in Khronos OpenXR archive' }
+          Copy-Item -Force $dll.FullName horizon\target\fast\openxr_loader.dll
+          Remove-Item -Recurse -Force openxr_tmp, openxr_loader.zip
+
+      - name: Package installer and payload
+        id: pkg
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ver = (Get-Content installer\VERSION -Raw).Trim()
+          "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          .\installer\build-release.ps1 -Horizon (Resolve-Path .\horizon).Path
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-vr-release-${{ steps.pkg.outputs.version }}
+          path: |
+            installer/out/HorizonVR-Installer.exe
+            installer/out/HorizonVR-Payload.zip
+            installer/out/HorizonVR-Payload.zip.sha256
+            installer/out/HorizonVR-Installer.zip
+
+      - name: Publish GitHub Release
+        if: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.create_release == true }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.pkg.outputs.version) }}
+          name: Horizon Vivecraft VR v${{ steps.pkg.outputs.version }}
+          generate_release_notes: true
+          files: |
+            installer/out/HorizonVR-Installer.exe
+            installer/out/HorizonVR-Payload.zip
+            installer/out/HorizonVR-Payload.zip.sha256
+            installer/out/HorizonVR-Installer.zip

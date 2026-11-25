@@ -53,6 +53,43 @@ pub(crate) struct VrSettings {
     pub crosshair: bool,
     /// `useFOVReduction`: darken the eyes' edges while walking (comfort vignette).
     pub fov_reduction: bool,
+    /// `renderScaleFactor`: stereo eye resolution area scale (0.5..=2.0).
+    pub render_scale_factor: f32,
+    /// `stencilOn`: early-Z mask unseen eye corners.
+    pub stencil_on: bool,
+    /// `playerHeight`: calibrated HMD eye height in meters (0.0 = automatic).
+    pub player_height: f32,
+    /// Multiplier for smooth rotation rate (default 1.0).
+    pub smooth_turn_speed: f32,
+    /// `movementSpeedMultiplier`: walking stick scale (0.15..=1.3).
+    pub movement_speed_multiplier: f32,
+    /// `autoSprint` & `autoSprintThreshold`.
+    pub auto_sprint: bool,
+    pub auto_sprint_threshold: f32,
+    /// Arrow headshot damage bonus in VR.
+    pub bow_headshots: bool,
+    /// 3D HUD & panel appearance.
+    pub hud_scale: f32,
+    pub hud_distance: f32,
+    pub hud_opacity: f32,
+    pub hud_hide: bool,
+    pub physical_gui: bool,
+    /// Face/view overlay toggles.
+    pub render_pumpkin_overlay: bool,
+    pub render_portal_overlay: bool,
+    pub render_fire_overlay: bool,
+    pub render_water_overlay: bool,
+    pub render_nausea_overlay: bool,
+    pub render_low_health_overlay: bool,
+    pub head_in_block_blackout: bool,
+    /// VR Throwing Extensions (`demistorm/VR-Throwing-Extensions` 26.3).
+    pub vr_throwing: bool,
+    pub throw_whole_stack: bool,
+    pub throw_velocity_mult: f32,
+    pub throw_aim_assist: bool,
+    pub throw_weapon_damage: bool,
+    pub throw_boomerang: bool,
+    pub throw_catch: bool,
 }
 
 /// `VRSettings.MirrorMode` (the ones the port draws).
@@ -96,8 +133,43 @@ impl Default for VrSettings {
             weapon_collision: true,
             crosshair: true,
             fov_reduction: false,
+            render_scale_factor: 1.0,
+            stencil_on: true,
+            player_height: 0.0,
+            smooth_turn_speed: 1.0,
+            movement_speed_multiplier: 1.0,
+            auto_sprint: true,
+            auto_sprint_threshold: 0.9,
+            bow_headshots: true,
+            hud_scale: 1.0,
+            hud_distance: 1.25,
+            hud_opacity: 1.0,
+            hud_hide: false,
+            physical_gui: false,
+            render_pumpkin_overlay: true,
+            render_portal_overlay: true,
+            render_fire_overlay: true,
+            render_water_overlay: true,
+            render_nausea_overlay: true,
+            render_low_health_overlay: true,
+            head_in_block_blackout: true,
+            vr_throwing: true,
+            throw_whole_stack: false,
+            throw_velocity_mult: 1.5,
+            throw_aim_assist: true,
+            throw_weapon_damage: true,
+            throw_boomerang: true,
+            throw_catch: true,
         }
     }
+}
+
+/// Calibrated player height scale (`AutoCalibration.getPlayerHeight() / DEFAULT_HEIGHT`),
+/// using `player_height` when explicitly calibrated (> 0.3 m) or `hmd_y` otherwise.
+pub(crate) fn calibrated_height_scale(hmd_y: f32) -> f32 {
+    let h = vr_settings().player_height;
+    let raw = if h > 0.3 { h } else { hmd_y };
+    (raw / 1.52).clamp(0.5, 2.0)
 }
 
 static SETTINGS: Mutex<Option<VrSettings>> = Mutex::new(None);
@@ -127,6 +199,13 @@ fn push(s: VrSettings) {
         Mirror::MixedReality => 2,
     });
     horizon_vr::set_camera_fov(s.camera_fov);
+    horizon_vr::set_render_scale(s.render_scale_factor);
+    horizon_vr::set_stencil_on(s.stencil_on);
+    horizon_vr::set_hud_scale(s.hud_scale);
+    horizon_vr::set_hud_distance(s.hud_distance);
+    horizon_vr::set_hud_opacity(s.hud_opacity);
+    horizon_vr::set_hud_hide(s.hud_hide);
+    horizon_vr::set_physical_gui(s.physical_gui);
 }
 
 const INCREMENTS: [f32; 6] = [0.0, 10.0, 30.0, 45.0, 90.0, 180.0];
@@ -201,6 +280,69 @@ impl Store for Lines {
                 "weaponCollision" => flag(&mut s.weapon_collision),
                 "crosshair" => flag(&mut s.crosshair),
                 "fovReduction" => flag(&mut s.fov_reduction),
+                "renderScaleFactor" => {
+                    if let Ok(v) = value.parse::<f32>() && v.is_finite() {
+                        s.render_scale_factor = v.clamp(0.5, 2.0);
+                    }
+                }
+                "stencilOn" => flag(&mut s.stencil_on),
+                "playerHeight" => {
+                    if let Ok(v) = value.parse::<f32>() && v.is_finite() {
+                        s.player_height = if v <= 0.3 { 0.0 } else { v.clamp(0.5, 2.5) };
+                    }
+                }
+                "smoothTurnSpeed" => {
+                    if let Ok(v) = value.parse::<f32>() && v.is_finite() {
+                        s.smooth_turn_speed = v.clamp(0.2, 3.0);
+                    }
+                }
+                "movementSpeedMultiplier" => {
+                    if let Ok(v) = value.parse::<f32>() && v.is_finite() {
+                        s.movement_speed_multiplier = v.clamp(0.15, 1.3);
+                    }
+                }
+                "autoSprint" => flag(&mut s.auto_sprint),
+                "autoSprintThreshold" => {
+                    if let Ok(v) = value.parse::<f32>() && v.is_finite() {
+                        s.auto_sprint_threshold = v.clamp(0.5, 1.0);
+                    }
+                }
+                "bowHeadshots" => flag(&mut s.bow_headshots),
+                "hudScale" => {
+                    if let Ok(v) = value.parse::<f32>() && v.is_finite() {
+                        s.hud_scale = v.clamp(0.35, 2.5);
+                    }
+                }
+                "hudDistance" => {
+                    if let Ok(v) = value.parse::<f32>() && v.is_finite() {
+                        s.hud_distance = v.clamp(0.25, 5.0);
+                    }
+                }
+                "hudOpacity" => {
+                    if let Ok(v) = value.parse::<f32>() && v.is_finite() {
+                        s.hud_opacity = v.clamp(0.15, 1.0);
+                    }
+                }
+                "hudHide" => flag(&mut s.hud_hide),
+                "physicalGuiEnabled" => flag(&mut s.physical_gui),
+                "renderPumpkinOverlay" => flag(&mut s.render_pumpkin_overlay),
+                "renderPortalOverlay" => flag(&mut s.render_portal_overlay),
+                "renderFireOverlay" => flag(&mut s.render_fire_overlay),
+                "renderWaterOverlay" => flag(&mut s.render_water_overlay),
+                "renderNauseaOverlay" => flag(&mut s.render_nausea_overlay),
+                "renderLowHealthOverlay" => flag(&mut s.render_low_health_overlay),
+                "headInBlockBlackout" => flag(&mut s.head_in_block_blackout),
+                "throwingEnabled" => flag(&mut s.vr_throwing),
+                "throwWholeStack" => flag(&mut s.throw_whole_stack),
+                "throwVelocityMultiplier" => {
+                    if let Ok(v) = value.parse::<f32>() && v.is_finite() {
+                        s.throw_velocity_mult = v.clamp(0.5, 3.0);
+                    }
+                }
+                "throwAimAssist" => flag(&mut s.throw_aim_assist),
+                "throwWeaponDamage" => flag(&mut s.throw_weapon_damage),
+                "throwBoomerang" => flag(&mut s.throw_boomerang),
+                "throwCatch" => flag(&mut s.throw_catch),
                 "displayMirrorMode" => {
                     s.mirror = match value {
                         "THIRD_PERSON" => Mirror::ThirdPerson,
@@ -224,6 +366,15 @@ impl Store for Lines {
         line("vr.worldRotationIncrement", &s.rotation_increment.to_string());
         line("vr.worldScale", &s.world_scale.to_string());
         line("vr.handCameraFov", &s.camera_fov.to_string());
+        line("vr.renderScaleFactor", &s.render_scale_factor.to_string());
+        line("vr.playerHeight", &s.player_height.to_string());
+        line("vr.smoothTurnSpeed", &s.smooth_turn_speed.to_string());
+        line("vr.movementSpeedMultiplier", &s.movement_speed_multiplier.to_string());
+        line("vr.autoSprintThreshold", &s.auto_sprint_threshold.to_string());
+        line("vr.hudScale", &s.hud_scale.to_string());
+        line("vr.hudDistance", &s.hud_distance.to_string());
+        line("vr.hudOpacity", &s.hud_opacity.to_string());
+        line("vr.throwVelocityMultiplier", &s.throw_velocity_mult.to_string());
         line(
             "vr.displayMirrorMode",
             match s.mirror {
@@ -254,6 +405,24 @@ impl Store for Lines {
             ("vr.weaponCollision", s.weapon_collision),
             ("vr.crosshair", s.crosshair),
             ("vr.fovReduction", s.fov_reduction),
+            ("vr.stencilOn", s.stencil_on),
+            ("vr.autoSprint", s.auto_sprint),
+            ("vr.bowHeadshots", s.bow_headshots),
+            ("vr.hudHide", s.hud_hide),
+            ("vr.physicalGuiEnabled", s.physical_gui),
+            ("vr.renderPumpkinOverlay", s.render_pumpkin_overlay),
+            ("vr.renderPortalOverlay", s.render_portal_overlay),
+            ("vr.renderFireOverlay", s.render_fire_overlay),
+            ("vr.renderWaterOverlay", s.render_water_overlay),
+            ("vr.renderNauseaOverlay", s.render_nausea_overlay),
+            ("vr.renderLowHealthOverlay", s.render_low_health_overlay),
+            ("vr.headInBlockBlackout", s.head_in_block_blackout),
+            ("vr.throwingEnabled", s.vr_throwing),
+            ("vr.throwWholeStack", s.throw_whole_stack),
+            ("vr.throwAimAssist", s.throw_aim_assist),
+            ("vr.throwWeaponDamage", s.throw_weapon_damage),
+            ("vr.throwBoomerang", s.throw_boomerang),
+            ("vr.throwCatch", s.throw_catch),
         ] {
             line(k, b(v));
         }
@@ -264,7 +433,7 @@ impl Store for Lines {
 }
 
 /// The page's rows, in order.
-const ROWS: [&str; 26] = [
+const ROWS: [&str; 53] = [
     "vivecraft.options.FREEMOVE_MODE",
     "vivecraft.options.WORLD_ROTATION_INCREMENT",
     "vivecraft.options.WORLD_SCALE",
@@ -291,6 +460,33 @@ const ROWS: [&str; 26] = [
     "vivecraft.options.WEAPON_COLLISION",
     "vivecraft.options.crosshair",
     "vivecraft.options.FOV_REDUCTION",
+    "vivecraft.options.RENDER_SCALEFACTOR",
+    "vivecraft.options.STENCIL_ON",
+    "horizon.vr.options.PLAYER_HEIGHT",
+    "horizon.vr.options.SMOOTH_TURN_SPEED",
+    "vivecraft.options.MOVEMENT_MULTIPLIER",
+    "vivecraft.options.AUTO_SPRINT",
+    "vivecraft.options.AUTO_SPRINT_THRESHOLD",
+    "horizon.vr.options.BOW_HEADSHOTS",
+    "vivecraft.options.HUD_SCALE",
+    "vivecraft.options.HUD_DISTANCE",
+    "vivecraft.options.HUD_OPACITY",
+    "vivecraft.options.HUD_HIDE",
+    "vivecraft.options.PHYSICAL_GUI",
+    "horizon.vr.options.PUMPKIN_OVERLAY",
+    "horizon.vr.options.PORTAL_OVERLAY",
+    "horizon.vr.options.FIRE_OVERLAY",
+    "horizon.vr.options.WATER_OVERLAY",
+    "horizon.vr.options.NAUSEA_OVERLAY",
+    "horizon.vr.options.LOW_HEALTH_OVERLAY",
+    "horizon.vr.options.HEAD_BLOCK_BLACKOUT",
+    "vrthrowing.options.ENABLED",
+    "vrthrowing.options.WHOLE_STACK",
+    "vrthrowing.options.VELOCITY_MULT",
+    "vrthrowing.options.AIM_ASSIST",
+    "vrthrowing.options.WEAPON_DAMAGE",
+    "vrthrowing.options.BOOMERANG",
+    "vrthrowing.options.CATCH",
 ];
 
 pub(crate) static PAGE: VrPage = VrPage;
@@ -362,6 +558,54 @@ impl Page for VrPage {
                         Mirror::MixedReality => "vivecraft.options.mirror.mixed_reality",
                     }),
                 },
+                26 => Row::Slider {
+                    label,
+                    value: ((s.render_scale_factor - 0.5) / 1.5).clamp(0.0, 1.0),
+                    text: Label::Value(format!("{:.2}x", s.render_scale_factor)),
+                },
+                28 => Row::Cycle {
+                    label,
+                    value: if s.player_height <= 0.3 {
+                        Label::Key("horizon.vr.options.height.auto")
+                    } else {
+                        Label::Value(format!("{:.2} m", s.player_height))
+                    },
+                },
+                29 => Row::Slider {
+                    label,
+                    value: ((s.smooth_turn_speed - 0.2) / 2.8).clamp(0.0, 1.0),
+                    text: Label::Value(format!("{:.2}x", s.smooth_turn_speed)),
+                },
+                30 => Row::Slider {
+                    label,
+                    value: ((s.movement_speed_multiplier - 0.15) / 1.15).clamp(0.0, 1.0),
+                    text: Label::Value(format!("{:.2}x", s.movement_speed_multiplier)),
+                },
+                32 => Row::Slider {
+                    label,
+                    value: ((s.auto_sprint_threshold - 0.5) / 0.5).clamp(0.0, 1.0),
+                    text: Label::Value(format!("{:.2}", s.auto_sprint_threshold)),
+                },
+                34 => Row::Slider {
+                    label,
+                    value: ((s.hud_scale - 0.35) / 2.15).clamp(0.0, 1.0),
+                    text: Label::Value(format!("{:.2}x", s.hud_scale)),
+                },
+                35 => Row::Slider {
+                    label,
+                    value: ((s.hud_distance - 0.25) / 4.75).clamp(0.0, 1.0),
+                    text: Label::Value(format!("{:.2} m", s.hud_distance)),
+                },
+                36 => Row::Slider {
+                    label,
+                    value: ((s.hud_opacity - 0.15) / 0.85).clamp(0.0, 1.0),
+                    text: Label::Value(format!("{:.0}%", s.hud_opacity * 100.0)),
+                },
+                48 => Row::Slider {
+                    label,
+                    value: ((s.throw_velocity_mult - 0.5) / 2.5).clamp(0.0, 1.0),
+                    text: Label::Value(format!("{:.2}x", s.throw_velocity_mult)),
+                },
                 _ => Row::Cycle { label, value: onoff(self.flag(&s, i)) },
             });
         }
@@ -371,6 +615,41 @@ impl Page for VrPage {
         change(|s| match (row, act) {
             (2, Act::Slide(t)) => s.world_scale = scale_of(t),
             (16, Act::Slide(t)) => s.camera_fov = (30.0 + t.clamp(0.0, 1.0) * 80.0).round(),
+            (26, Act::Slide(t)) => {
+                s.render_scale_factor = ((0.5 + t.clamp(0.0, 1.0) * 1.5) * 20.0).round() / 20.0;
+            }
+            (28, Act::PressBack) => s.player_height = 0.0,
+            (28, Act::Press) => {
+                if s.player_height > 0.3 {
+                    s.player_height = 0.0;
+                } else if let Some(p) = horizon_vr::poses() {
+                    let h = p.hmd.position[1].clamp(0.5, 2.5);
+                    s.player_height = (h * 100.0).round() / 100.0;
+                    log::info!("Horizon VR: calibrated player height {:.2} m", s.player_height);
+                }
+            }
+            (29, Act::Slide(t)) => {
+                s.smooth_turn_speed = ((0.2 + t.clamp(0.0, 1.0) * 2.8) * 20.0).round() / 20.0;
+            }
+            (30, Act::Slide(t)) => {
+                s.movement_speed_multiplier =
+                    ((0.15 + t.clamp(0.0, 1.0) * 1.15) * 20.0).round() / 20.0;
+            }
+            (32, Act::Slide(t)) => {
+                s.auto_sprint_threshold = ((0.5 + t.clamp(0.0, 1.0) * 0.5) * 20.0).round() / 20.0;
+            }
+            (34, Act::Slide(t)) => {
+                s.hud_scale = ((0.35 + t.clamp(0.0, 1.0) * 2.15) * 20.0).round() / 20.0;
+            }
+            (35, Act::Slide(t)) => {
+                s.hud_distance = ((0.25 + t.clamp(0.0, 1.0) * 4.75) * 20.0).round() / 20.0;
+            }
+            (36, Act::Slide(t)) => {
+                s.hud_opacity = ((0.15 + t.clamp(0.0, 1.0) * 0.85) * 20.0).round() / 20.0;
+            }
+            (48, Act::Slide(t)) => {
+                s.throw_velocity_mult = ((0.5 + t.clamp(0.0, 1.0) * 2.5) * 20.0).round() / 20.0;
+            }
             (0, Act::Press | Act::PressBack) => {
                 let all = [FreeMove::Controller, FreeMove::Hmd, FreeMove::RunInPlace];
                 let i = all.iter().position(|m| *m == s.free_move).unwrap_or(0);
@@ -424,6 +703,24 @@ impl VrPage {
             23 => &mut s.weapon_collision,
             24 => &mut s.crosshair,
             25 => &mut s.fov_reduction,
+            27 => &mut s.stencil_on,
+            31 => &mut s.auto_sprint,
+            33 => &mut s.bow_headshots,
+            37 => &mut s.hud_hide,
+            38 => &mut s.physical_gui,
+            39 => &mut s.render_pumpkin_overlay,
+            40 => &mut s.render_portal_overlay,
+            41 => &mut s.render_fire_overlay,
+            42 => &mut s.render_water_overlay,
+            43 => &mut s.render_nausea_overlay,
+            44 => &mut s.render_low_health_overlay,
+            45 => &mut s.head_in_block_blackout,
+            46 => &mut s.vr_throwing,
+            47 => &mut s.throw_whole_stack,
+            49 => &mut s.throw_aim_assist,
+            50 => &mut s.throw_weapon_damage,
+            51 => &mut s.throw_boomerang,
+            52 => &mut s.throw_catch,
             _ => return None,
         })
     }
@@ -468,7 +765,35 @@ static LANG: &horizon_hooks::lang::Files = &[("en_us", r#"{
 "vivecraft.options.RENDER_DEBUG_PLAYER_AXES": "Remote Device Axes",
 "vivecraft.options.WEAPON_COLLISION": "Weapon Collision",
 "vivecraft.options.crosshair": "Crosshair",
-"vivecraft.options.FOV_REDUCTION": "Comfort Vignette"
+"vivecraft.options.FOV_REDUCTION": "Comfort Vignette",
+"vivecraft.options.RENDER_SCALEFACTOR": "VR Render Scale",
+"vivecraft.options.STENCIL_ON": "Stereo Eye Stencil",
+"horizon.vr.options.PLAYER_HEIGHT": "Calibrate Height",
+"horizon.vr.options.height.auto": "Auto",
+"horizon.vr.options.SMOOTH_TURN_SPEED": "Smooth Turn Speed",
+"vivecraft.options.MOVEMENT_MULTIPLIER": "Move Speed Multiplier",
+"vivecraft.options.AUTO_SPRINT": "Auto Sprint",
+"vivecraft.options.AUTO_SPRINT_THRESHOLD": "Auto Sprint Threshold",
+"horizon.vr.options.BOW_HEADSHOTS": "VR Bow Headshots",
+"vivecraft.options.HUD_SCALE": "HUD Scale",
+"vivecraft.options.HUD_DISTANCE": "HUD Distance",
+"vivecraft.options.HUD_OPACITY": "HUD Opacity",
+"vivecraft.options.HUD_HIDE": "Hide HUD",
+"vivecraft.options.PHYSICAL_GUI": "Physical GUI Touch",
+"horizon.vr.options.PUMPKIN_OVERLAY": "Pumpkin Overlay",
+"horizon.vr.options.PORTAL_OVERLAY": "Portal Overlay",
+"horizon.vr.options.FIRE_OVERLAY": "Fire Overlay",
+"horizon.vr.options.WATER_OVERLAY": "Water Overlay",
+"horizon.vr.options.NAUSEA_OVERLAY": "Nausea Overlay",
+"horizon.vr.options.LOW_HEALTH_OVERLAY": "Low Health Tint",
+"horizon.vr.options.HEAD_BLOCK_BLACKOUT": "Inside Block Blackout",
+"vrthrowing.options.ENABLED": "VR Throwing",
+"vrthrowing.options.WHOLE_STACK": "Throw Whole Stack",
+"vrthrowing.options.VELOCITY_MULT": "Throw Velocity",
+"vrthrowing.options.AIM_ASSIST": "Throw Aim Assist",
+"vrthrowing.options.WEAPON_DAMAGE": "Thrown Weapon Damage",
+"vrthrowing.options.BOOMERANG": "Weapon Boomerang",
+"vrthrowing.options.CATCH": "Catch Thrown Items"
 }"#)];
 
 /// Registers the settings' file, their page and their names. Before the game starts.

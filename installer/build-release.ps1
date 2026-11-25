@@ -8,9 +8,10 @@ $ErrorActionPreference = 'Stop'
 $version = [version](Get-Content (Join-Path $PSScriptRoot 'VERSION') -Raw).Trim()
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $latest = [version]((Invoke-RestMethod -UseBasicParsing -TimeoutSec 15 'https://api.github.com/repos/v1nx0/horizon-vivecraft-vr/releases/latest').tag_name.TrimStart('v'))
+    $latest = [version]((Invoke-RestMethod -UseBasicParsing -TimeoutSec 15 'https://api.github.com/repos/MjKey/horizon-vivecraft-vr/releases/latest').tag_name.TrimStart('v'))
     if ($version -le $latest) { throw "VERSION is $version but GitHub already has ${latest}: raise installer\VERSION first." }
-} catch [System.Net.WebException] {
+} catch {
+    if ($_.Exception.Message -like '*raise installer\VERSION first*') { throw }
     Write-Warning "Couldn't check GitHub's latest release: $_"
 }
 Write-Host "Building Horizon VR $version (publish it with the tag v$version)"

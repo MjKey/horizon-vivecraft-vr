@@ -50,7 +50,7 @@ fn launcher_exe() -> PathBuf {
 /// Where releases come from. HORIZONVR_RELEASES points the tests at a local copy.
 fn releases() -> String {
     env::var("HORIZONVR_RELEASES")
-        .unwrap_or_else(|_| "https://api.github.com/repos/v1nx0/horizon-vivecraft-vr/releases/latest".into())
+        .unwrap_or_else(|_| "https://api.github.com/repos/MjKey/horizon-vivecraft-vr/releases/latest".into())
 }
 
 /// HORIZONVR_SHORTCUTS: one folder for both shortcuts, so the tests leave the real ones alone.

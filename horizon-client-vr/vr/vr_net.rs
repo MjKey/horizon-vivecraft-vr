@@ -27,13 +27,24 @@ mod id {
     pub const UBERPACKET: u8 = 8;
     pub const TELEPORT: u8 = 9;
     pub const CLIMBING: u8 = 10;
+    pub const SETTING_OVERRIDE: u8 = 11;
     pub const HEIGHT: u8 = 12;
     pub const ACTIVEHAND: u8 = 13;
     pub const CRAWL: u8 = 14;
     pub const NETWORK_VERSION: u8 = 15;
+    pub const VR_SWITCHING: u8 = 16;
     pub const IS_VR_ACTIVE: u8 = 17;
     pub const VR_PLAYER_STATE: u8 = 18;
+    pub const DUAL_WIELDING: u8 = 19;
+    pub const HAPTIC: u8 = 20;
+    pub const SERVER_VR_CHANGES: u8 = 21;
+    pub const DAMAGE_DIRECTION: u8 = 22;
+    pub const ATTACK_WHILE_BLOCKING: u8 = 23;
+    pub const AIM_DIRECTION_OVERRIDE: u8 = 24;
+    pub const AIM_OVERRIDE_RESET: u8 = 25;
+    pub const AIM_POSITION_OVERRIDE: u8 = 26;
     pub const JUMPING: u8 = 27;
+    pub const ROOMSCALE_ATTACK: u8 = 28;
 }
 
 /// A device's pose as Vivecraft sends it: position from the player's feet, orientation in the world.
@@ -71,6 +82,12 @@ pub(crate) struct Net {
     pub climb_blocks: Vec<String>,
     /// `ClientVRPlayers`: other VR players by UUID.
     pub players: HashMap<u128, NetVrPlayer>,
+    pub allows_dual_wielding: bool,
+    pub allows_attack_while_blocking: bool,
+    pub allows_vr_switching: bool,
+    pub setting_overrides: HashMap<String, String>,
+    pub server_vr_changes: HashMap<String, String>,
+    pub last_damage_dir: Option<(glam::Vec3, std::time::Instant)>,
     world_scale_last: f32,
     height_last: f32,
     crawl_last: bool,
@@ -263,8 +280,62 @@ fn receive(net: &mut Net, data: &[u8]) -> Option<String> {
                 net.players.remove(&uuid);
             }
         }
-        // Settings overrides, VR switching, dual wielding, haptics, damage directions and the
-        // rest change nothing Horizon draws or decides.
+        id::SETTING_OVERRIDE => {
+            let mut pairs = Vec::new();
+            while !r.0.is_empty() {
+                pairs.push((r.utf()?, r.utf()?));
+            }
+            let clear = pairs
+                .iter()
+                .any(|(k, v)| k == "clearOverrides" && v == "true");
+            for (k, v) in pairs {
+                if k == "clearOverrides" {
+                    continue;
+                }
+                if clear {
+                    net.setting_overrides.remove(&k);
+                } else {
+                    net.setting_overrides.insert(k, v);
+                }
+            }
+        }
+        id::VR_SWITCHING => net.allows_vr_switching = r.bool()?,
+        id::DUAL_WIELDING => net.allows_dual_wielding = r.bool()?,
+        id::HAPTIC => {
+            let body_part = r.u8()?;
+            let duration = r.f32()?;
+            let _frequency = r.f32()?;
+            let amplitude = r.f32()?;
+            let _delay = r.f32()?;
+            if duration.is_finite() && amplitude.is_finite() && duration > 0.0 && amplitude > 0.0
+            {
+                let controller = match body_part {
+                    0 => Some(0),
+                    1 => Some(1),
+                    _ => None,
+                };
+                if let Some(c) = controller {
+                    let micros = (duration.clamp(0.002, 1.0)
+                        * 1_000_000.0
+                        * amplitude.clamp(0.1, 1.0)) as u32;
+                    horizon_vr::haptic(c, micros);
+                }
+            }
+        }
+        id::SERVER_VR_CHANGES => {
+            let mut changes = HashMap::new();
+            while !r.0.is_empty() {
+                changes.insert(r.utf()?, r.utf()?);
+            }
+            net.server_vr_changes = changes;
+        }
+        id::DAMAGE_DIRECTION => {
+            let dir = glam::Vec3::new(r.f32()?, r.f32()?, r.f32()?);
+            if dir.is_finite() {
+                net.last_damage_dir = Some((dir, std::time::Instant::now()));
+            }
+        }
+        id::ATTACK_WHILE_BLOCKING => net.allows_attack_while_blocking = r.bool()?,
         _ => {}
     }
     None
@@ -343,8 +414,8 @@ impl Game<'_> {
         let body = super::vr_osc::osc_body(poses.hmd).map(|parts| {
             parts.map(|(at, q)| NetPose { position: rel(data.room.to_world(at)), orientation: (turn * q).normalize() })
         });
-        // `AutoCalibration.getPlayerHeight() / DEFAULT_HEIGHT` (1.52 m eyes): the headset's height.
-        let height = (data.hmd_height() / 1.52).clamp(0.5, 2.0);
+        // `AutoCalibration.getPlayerHeight() / DEFAULT_HEIGHT` (1.52 m eyes): calibrated or live height.
+        let height = super::vr_settings::calibrated_height_scale(data.hmd_height());
         let mut out = Vec::new();
         {
             let mut guard = vr_net();
@@ -454,6 +525,70 @@ impl Game<'_> {
                 b.push(1);
             }
             self.vr_net_send(b);
+        }
+    }
+
+    /// `AimPosOverridePayloadC2S` & `AimDirOverridePayloadC2S` (`NetworkVersion.AIM_OVERRIDE` >= 8).
+    /// `pos` is in world coordinates and sent relative to the player's feet.
+    pub(crate) fn vr_net_aim_override(&self, pos: Option<[f64; 3]>, dir: Option<glam::Vec3>) {
+        if !self.vr_net_ready() || with(|n| n.version < 8) {
+            return;
+        }
+        if let (Some(pos), Some(feet)) = (pos, self.player.as_ref().map(|p| p.position)) {
+            let mut b = vec![id::AIM_POSITION_OVERRIDE];
+            put_f32(&mut b, (pos[0] - feet.x) as f32);
+            put_f32(&mut b, (pos[1] - feet.y) as f32);
+            put_f32(&mut b, (pos[2] - feet.z) as f32);
+            self.vr_net_send(b);
+        }
+        if let Some(dir) = dir.map(|d| d.normalize_or_zero()).filter(|d| d.length_squared() > 1e-6) {
+            let mut b = vec![id::AIM_DIRECTION_OVERRIDE];
+            put_f32(&mut b, dir.x);
+            put_f32(&mut b, dir.y);
+            put_f32(&mut b, dir.z);
+            self.vr_net_send(b);
+        }
+    }
+
+    /// `AimOverrideResetPayloadC2S` (`NetworkVersion.AIM_OVERRIDE` >= 8).
+    pub(crate) fn vr_net_aim_override_reset(&self, ticks: u8) {
+        if self.vr_net_ready() && with(|n| n.version >= 8) {
+            self.vr_net_send(vec![id::AIM_OVERRIDE_RESET, ticks]);
+        }
+    }
+
+    /// `RoomscaleAttackPayloadC2S` (`NetworkVersion.ROOMSCALE_ATTACK_PACKET` >= 10).
+    pub(crate) fn vr_net_roomscale_attack(&self, is_roomscale: bool, hits_made: u8) {
+        if self.vr_net_ready() && with(|n| n.version >= 10) {
+            self.vr_net_send(vec![id::ROOMSCALE_ATTACK, u8::from(is_roomscale), hits_made]);
+        }
+    }
+
+    /// `ActiveBodyPartPayloadC2S` (`part`: 0 main, 1 offhand, 2 head when `version >= 3`).
+    pub(crate) fn vr_net_active_hand(&self, part: u8, use_for_aim: bool) {
+        if !self.vr_net_ready() || !with(|n| n.wants_data) {
+            return;
+        }
+        let version = {
+            let mut guard = vr_net();
+            let Some(net) = guard.as_mut() else {
+                return;
+            };
+            net.body_part_last = part;
+            net.version
+        };
+        let mut b = vec![id::ACTIVEHAND, part];
+        if version >= 3 {
+            b.push(u8::from(use_for_aim));
+        }
+        self.vr_net_send(b);
+    }
+
+    /// `VRActivePayloadC2S` (`NetworkVersion.NEW_NETWORKING` >= 0).
+    #[allow(dead_code)]
+    pub(crate) fn vr_net_vr_active(&self, active: bool) {
+        if self.vr_net_ready() && with(|n| n.version >= 0) {
+            self.vr_net_send(vec![id::IS_VR_ACTIVE, u8::from(active)]);
         }
     }
 }
@@ -577,5 +712,60 @@ mod tests {
         put_f32(&mut bad, 1.0);
         receive(&mut n, &bad);
         assert!(!n.players.contains_key(&8));
+    }
+
+    #[test]
+    fn reads_extended_server_packets() {
+        let mut n = Net::default();
+        // DUAL_WIELDING, ATTACK_WHILE_BLOCKING, VR_SWITCHING
+        receive(&mut n, &[id::DUAL_WIELDING, 1]);
+        receive(&mut n, &[id::ATTACK_WHILE_BLOCKING, 1]);
+        receive(&mut n, &[id::VR_SWITCHING, 1]);
+        assert!(n.allows_dual_wielding && n.allows_attack_while_blocking && n.allows_vr_switching);
+
+        // SETTING_OVERRIDE set & clearOverrides
+        let put_utf = |b: &mut Vec<u8>, s: &str| {
+            b.push(s.len() as u8);
+            b.extend_from_slice(s.as_bytes());
+        };
+        let mut b = vec![id::SETTING_OVERRIDE];
+        put_utf(&mut b, "vr.worldScale");
+        put_utf(&mut b, "1.5");
+        put_utf(&mut b, "clearOverrides");
+        put_utf(&mut b, "false");
+        receive(&mut n, &b);
+        assert_eq!(n.setting_overrides.get("vr.worldScale").map(String::as_str), Some("1.5"));
+
+        let mut clr = vec![id::SETTING_OVERRIDE];
+        put_utf(&mut clr, "vr.worldScale");
+        put_utf(&mut clr, "1.5");
+        put_utf(&mut clr, "clearOverrides");
+        put_utf(&mut clr, "true");
+        receive(&mut n, &clr);
+        assert!(!n.setting_overrides.contains_key("vr.worldScale"));
+
+        // SERVER_VR_CHANGES
+        let mut ch = vec![id::SERVER_VR_CHANGES];
+        put_utf(&mut ch, "vr.allowCrawling");
+        put_utf(&mut ch, "false");
+        receive(&mut n, &ch);
+        assert_eq!(n.server_vr_changes.get("vr.allowCrawling").map(String::as_str), Some("false"));
+
+        // DAMAGE_DIRECTION
+        let mut dmg = vec![id::DAMAGE_DIRECTION];
+        put_f32(&mut dmg, 0.5);
+        put_f32(&mut dmg, 0.0);
+        put_f32(&mut dmg, -0.8);
+        receive(&mut n, &dmg);
+        let stored = n.last_damage_dir.expect("stored").0;
+        assert!((stored - glam::Vec3::new(0.5, 0.0, -0.8)).length() < 1e-6);
+
+        // HAPTIC packet: non-finite values don't panic
+        let mut hap = vec![id::HAPTIC, 0];
+        put_f32(&mut hap, 0.1);
+        put_f32(&mut hap, 160.0);
+        put_f32(&mut hap, 0.8);
+        put_f32(&mut hap, 0.0);
+        receive(&mut n, &hap);
     }
 }

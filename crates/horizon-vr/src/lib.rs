@@ -83,6 +83,8 @@ struct Running {
     eye_held: [Option<wgpu::Texture>; 2],
     /// The face effects' pass (`set_eye_tint`).
     tint: Option<Tint>,
+    /// HUD opacity pass (`hudOpacity < 1.0`).
+    panel_alpha: Option<PanelAlpha>,
     eye_ready: [bool; 2],
     open: Option<Open>,
     /// The runtime's recommended pixels per eye.
@@ -179,10 +181,203 @@ fn start() -> bool {
     }
 }
 
+fn load_openxr_entry() -> Result<xr::Entry, String> {
+    // Safety: the Khronos loader beside the executable or on PATH takes priority.
+    match unsafe { xr::Entry::load(&()) } {
+        Ok(entry) => Ok(entry),
+        Err(default_err) => {
+            #[cfg(windows)]
+            {
+                let mut tried = Vec::new();
+                for candidate in steamvr_loader_candidates(&steam_roots()) {
+                    tried.push(candidate.display().to_string());
+                    if candidate.is_file() {
+                        match unsafe { xr::Entry::load_from(&candidate, &()) } {
+                            Ok(entry) => {
+                                log::info!(
+                                    "Horizon VR: loaded OpenXR loader from {}",
+                                    candidate.display()
+                                );
+                                return Ok(entry);
+                            }
+                            Err(e) => {
+                                log::warn!(
+                                    "Horizon VR: failed to load {}: {e}",
+                                    candidate.display()
+                                );
+                            }
+                        }
+                    }
+                }
+                let searched = if tried.is_empty() {
+                    String::from("none")
+                } else {
+                    tried.join(", ")
+                };
+                Err(format!(
+                    "no OpenXR loader ({default_err}; tried SteamVR paths: {searched})"
+                ))
+            }
+            #[cfg(not(windows))]
+            {
+                Err(format!(
+                    "no OpenXR loader (put openxr_loader beside the game): {default_err}"
+                ))
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+fn steam_roots() -> Vec<std::path::PathBuf> {
+    let mut roots = Vec::new();
+    const HKEY_CURRENT_USER: usize = 0x8000_0001;
+    const HKEY_LOCAL_MACHINE: usize = 0x8000_0002;
+    for (hive, subkey, value) in [
+        (HKEY_CURRENT_USER, "Software\\Valve\\Steam", "SteamPath"),
+        (HKEY_LOCAL_MACHINE, "SOFTWARE\\WOW6432Node\\Valve\\Steam", "InstallPath"),
+        (HKEY_LOCAL_MACHINE, "SOFTWARE\\Valve\\Steam", "InstallPath"),
+    ] {
+        if let Some(p) = read_registry_string(hive, subkey, value) {
+            push_unique_path(&mut roots, std::path::PathBuf::from(p));
+        }
+    }
+    for fallback in [r"C:\Program Files (x86)\Steam", r"C:\Program Files\Steam"] {
+        push_unique_path(&mut roots, std::path::PathBuf::from(fallback));
+    }
+    roots
+}
+
+#[cfg(windows)]
+fn read_registry_string(hive: usize, subkey: &str, value: &str) -> Option<String> {
+    const RRF_RT_REG_SZ: u32 = 0x0000_0002;
+    #[link(name = "advapi32")]
+    unsafe extern "system" {
+        fn RegGetValueW(
+            hkey: *mut core::ffi::c_void,
+            lp_sub_key: *const u16,
+            lp_value: *const u16,
+            dw_flags: u32,
+            pdw_type: *mut u32,
+            pv_data: *mut core::ffi::c_void,
+            pcb_data: *mut u32,
+        ) -> i32;
+    }
+    let to_wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
+    let subkey_w = to_wide(subkey);
+    let value_w = to_wide(value);
+    let mut bytes: u32 = 0;
+    let status = unsafe {
+        RegGetValueW(
+            hive as *mut core::ffi::c_void,
+            subkey_w.as_ptr(),
+            value_w.as_ptr(),
+            RRF_RT_REG_SZ,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            &mut bytes,
+        )
+    };
+    if status != 0 || bytes < 2 || bytes > 65536 {
+        return None;
+    }
+    let mut buf = vec![0u16; (bytes as usize + 1) / 2];
+    let mut out_bytes = (buf.len() * 2) as u32;
+    let status = unsafe {
+        RegGetValueW(
+            hive as *mut core::ffi::c_void,
+            subkey_w.as_ptr(),
+            value_w.as_ptr(),
+            RRF_RT_REG_SZ,
+            std::ptr::null_mut(),
+            buf.as_mut_ptr().cast(),
+            &mut out_bytes,
+        )
+    };
+    if status != 0 {
+        return None;
+    }
+    let chars = (out_bytes as usize / 2).min(buf.len());
+    let len = buf[..chars].iter().position(|&c| c == 0).unwrap_or(chars);
+    let s = String::from_utf16_lossy(&buf[..len]);
+    (!s.trim().is_empty()).then_some(s)
+}
+
+fn push_unique_path(list: &mut Vec<std::path::PathBuf>, path: std::path::PathBuf) {
+    let key = path.to_string_lossy().replace('/', "\\").to_ascii_lowercase();
+    if !list
+        .iter()
+        .any(|p| p.to_string_lossy().replace('/', "\\").to_ascii_lowercase() == key)
+    {
+        list.push(path);
+    }
+}
+
+/// Parses `"path" "<dir>"` entries from Steam's `libraryfolders.vdf`.
+fn parse_library_folders_vdf(vdf: &str) -> Vec<std::path::PathBuf> {
+    let mut dirs = Vec::new();
+    for line in vdf.lines() {
+        let mut rest = line.trim();
+        let Some(after_key_quote) = rest.strip_prefix('"') else {
+            continue;
+        };
+        let Some((key, after_key)) = after_key_quote.split_once('"') else {
+            continue;
+        };
+        if !key.eq_ignore_ascii_case("path") {
+            continue;
+        }
+        rest = after_key.trim_start();
+        let Some(after_val_quote) = rest.strip_prefix('"') else {
+            continue;
+        };
+        let mut raw = String::new();
+        let mut chars = after_val_quote.chars();
+        let mut closed = false;
+        while let Some(ch) = chars.next() {
+            match ch {
+                '\\' => {
+                    if let Some(escaped) = chars.next() {
+                        raw.push(escaped);
+                    }
+                }
+                '"' => {
+                    closed = true;
+                    break;
+                }
+                other => raw.push(other),
+            }
+        }
+        if closed && !raw.trim().is_empty() {
+            push_unique_path(&mut dirs, std::path::PathBuf::from(raw));
+        }
+    }
+    dirs
+}
+
+/// Builds deduplicated `openxr_loader.dll` candidate paths across all Steam roots and their VDF libraries.
+fn steamvr_loader_candidates(steam_roots: &[std::path::PathBuf]) -> Vec<std::path::PathBuf> {
+    let mut libraries = Vec::new();
+    for root in steam_roots {
+        push_unique_path(&mut libraries, root.clone());
+        let vdf_path = root.join("steamapps").join("libraryfolders.vdf");
+        if let Ok(text) = std::fs::read_to_string(vdf_path) {
+            for lib in parse_library_folders_vdf(&text) {
+                push_unique_path(&mut libraries, lib);
+            }
+        }
+    }
+    let mut candidates = Vec::new();
+    for lib in libraries {
+        let steamvr = lib.join("steamapps").join("common").join("SteamVR").join("bin");
+        push_unique_path(&mut candidates, steamvr.join("win64").join("openxr_loader.dll"));
+        push_unique_path(&mut candidates, steamvr.join("x64").join("openxr_loader.dll"));
+    }
+    candidates
+}
+
 fn connect() -> Result<Start, String> {
-    // Safety: the Khronos loader, beside the game or the system's.
-    let entry = unsafe { xr::Entry::load(&()) }
-        .map_err(|e| format!("no OpenXR loader (put openxr_loader.dll beside the game): {e}"))?;
+    let entry = load_openxr_entry()?;
     let available = entry
         .enumerate_extensions()
         .map_err(|e| format!("OpenXR runtime (is SteamVR running?): {e}"))?;
@@ -416,6 +611,7 @@ fn begin_session(start: Start, device: &wgpu::Device) -> Result<Running, String>
         eye_chains: [None, None],
         eye_held: [None, None],
         tint: None,
+        panel_alpha: None,
         eye_ready: [false, false],
         open: None,
         recommended,
@@ -787,6 +983,9 @@ pub struct Eye {
     pub pitch: f32,
     pub roll: f32,
     pub fov_degrees: f32,
+    /// OpenXR asymmetric half-angle tangents `[tan_left, tan_right, tan_down, tan_up]`,
+    /// when different from symmetric `fov_degrees` + aspect.
+    pub fov_tangents: Option<[f32; 4]>,
     pub size: [u32; 2],
 }
 
@@ -880,6 +1079,7 @@ fn camera_view(room: Room, size: [u32; 2]) -> Option<(Eye, Pose)> {
             pitch,
             roll,
             fov_degrees: f32::from_bits(CAMERA_FOV_BITS.load(std::sync::atomic::Ordering::Relaxed)),
+            fov_tangents: None,
             size,
         },
         pose,
@@ -1058,6 +1258,7 @@ impl Running {
                 pitch,
                 roll,
                 fov_degrees: LENS_FOV,
+                fov_tangents: None,
                 size: [side, side],
             },
             eye,
@@ -1103,7 +1304,9 @@ pub fn eye_drawn(
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: color.format(),
-                usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
+                usage: wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             }));
         }
@@ -1188,7 +1391,9 @@ pub fn eye_drawn(
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: color.format(),
-                usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
+                usage: wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             }));
         }
@@ -1451,6 +1656,21 @@ pub fn set_room(room: Option<Room>) {
     });
 }
 
+/// Updates only the room's yaw rotation and its pivot-induced origin offset between ticks
+/// (per-frame smooth turning), preserving the active 50 ms position easing timer.
+pub fn update_room_rotation(room: Room) {
+    let mut lock = ROOM.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(state) = lock.as_mut() {
+        for i in 0..3 {
+            let d = room.origin[i] - state.to.origin[i];
+            state.from.origin[i] += d;
+            state.to.origin[i] = room.origin[i];
+        }
+        state.from.rotation = room.rotation;
+        state.to.rotation = room.rotation;
+    }
+}
+
 impl RoomState {
     fn now(&self) -> Room {
         let t = (self.at.elapsed().as_secs_f64() / 0.05).clamp(0.0, 1.0);
@@ -1547,20 +1767,17 @@ impl Running {
         let mut eyes = [None, None];
         let mut fovs = [xr::Fovf::default(); 2];
         let mut sizes = [[0; 2]; 2];
+        let lin_scale = render_scale().sqrt();
         for (k, view) in views.iter().take(2).enumerate() {
-            // Horizon's views are symmetric: the widest half-angles each way, told to the
-            // runtime as drawn, so it reprojects them right.
             let f = view.fov;
-            let h = f.angle_right.max(-f.angle_left);
-            let v = f.angle_up.max(-f.angle_down);
-            let height = self.recommended[1].clamp(16, 4096);
-            let width = ((height as f32 * h.tan() / v.tan()).round() as u32).clamp(16, 4096);
-            fovs[k] = xr::Fovf {
-                angle_left: -h,
-                angle_right: h,
-                angle_up: v,
-                angle_down: -v,
-            };
+            let tan_l = f.angle_left.tan();
+            let tan_r = f.angle_right.tan();
+            let tan_d = f.angle_down.tan();
+            let tan_u = f.angle_up.tan();
+            let height = ((self.recommended[1] as f32 * lin_scale).round() as u32).clamp(64, 4096);
+            let aspect = ((tan_r - tan_l) / (tan_u - tan_d).max(1e-4)).clamp(0.25, 4.0);
+            let width = ((height as f32 * aspect).round() as u32).clamp(64, 4096);
+            fovs[k] = f;
             sizes[k] = [width, height];
             let (camera, yaw, pitch, roll) = eye_camera(room, view.pose);
             self.eye_cameras[k] = camera;
@@ -1569,7 +1786,8 @@ impl Running {
                 yaw,
                 pitch,
                 roll,
-                fov_degrees: (2.0 * v).to_degrees(),
+                fov_degrees: (f.angle_up - f.angle_down).to_degrees().clamp(1.0, 170.0),
+                fov_tangents: Some([tan_l, tan_r, tan_d, tan_u]),
                 size: [width, height],
             });
         }
@@ -1653,6 +1871,7 @@ impl Running {
                 &self.space,
                 self.screen.as_mut().expect("prepared"),
                 self.held.as_ref().expect("prepared"),
+                &mut self.panel_alpha,
                 device,
                 queue,
                 open.time,
@@ -1732,6 +1951,7 @@ impl Running {
                 &self.space,
                 self.screen.as_mut().expect("prepared"),
                 self.held.as_ref().expect("prepared"),
+                &mut self.panel_alpha,
                 device,
                 queue,
                 open.time,
@@ -1882,35 +2102,158 @@ impl Input {
                 .map_err(e)?,
         ];
         let path = |p: &str| instance.string_to_path(p).map_err(e);
-        let profile = path("/interaction_profiles/oculus/touch_controller")?;
-        let mut bindings = vec![
-            xr::Binding::new(&walk, path("/user/hand/left/input/thumbstick")?),
-            xr::Binding::new(&turn, path("/user/hand/right/input/thumbstick")?),
-            xr::Binding::new(&triggers[0], path("/user/hand/left/input/trigger/value")?),
-            xr::Binding::new(&triggers[1], path("/user/hand/right/input/trigger/value")?),
-            xr::Binding::new(&grips[0], path("/user/hand/left/input/squeeze/value")?),
-            xr::Binding::new(&grips[1], path("/user/hand/right/input/squeeze/value")?),
-            xr::Binding::new(&poses[0], path("/user/hand/left/input/grip/pose")?),
-            xr::Binding::new(&poses[1], path("/user/hand/right/input/grip/pose")?),
-            xr::Binding::new(&poses[2], path("/user/hand/right/input/aim/pose")?),
-            xr::Binding::new(&poses[3], path("/user/hand/left/input/aim/pose")?),
-            xr::Binding::new(&haptics[0], path("/user/hand/right/output/haptic")?),
-            xr::Binding::new(&haptics[1], path("/user/hand/left/output/haptic")?),
-        ];
-        for (action, p) in buttons.iter().zip([
-            "/user/hand/right/input/a/click",
-            "/user/hand/right/input/b/click",
-            "/user/hand/left/input/x/click",
-            "/user/hand/left/input/y/click",
-            "/user/hand/left/input/menu/click",
-            "/user/hand/left/input/thumbstick/click",
-            "/user/hand/right/input/thumbstick/click",
-        ]) {
-            bindings.push(xr::Binding::new(action, path(p)?));
+        struct ProfileSpec<'a> {
+            name: &'a str,
+            xr_path: &'a str,
+            walk: Option<&'a str>,
+            turn: Option<&'a str>,
+            triggers: [&'a str; 2],
+            grips: Option<[&'a str; 2]>,
+            buttons: &'a [(usize, &'a str)],
         }
-        instance
-            .suggest_interaction_profile_bindings(profile, &bindings)
-            .map_err(|e| format!("Touch controller bindings: {e}"))?;
+        const PROFILES: &[ProfileSpec<'_>] = &[
+            ProfileSpec {
+                name: "Touch",
+                xr_path: "/interaction_profiles/oculus/touch_controller",
+                walk: Some("/user/hand/left/input/thumbstick"),
+                turn: Some("/user/hand/right/input/thumbstick"),
+                triggers: [
+                    "/user/hand/left/input/trigger/value",
+                    "/user/hand/right/input/trigger/value",
+                ],
+                grips: Some([
+                    "/user/hand/left/input/squeeze/value",
+                    "/user/hand/right/input/squeeze/value",
+                ]),
+                buttons: &[
+                    (0, "/user/hand/right/input/a/click"),
+                    (1, "/user/hand/right/input/b/click"),
+                    (2, "/user/hand/left/input/x/click"),
+                    (3, "/user/hand/left/input/y/click"),
+                    (4, "/user/hand/left/input/menu/click"),
+                    (5, "/user/hand/left/input/thumbstick/click"),
+                    (6, "/user/hand/right/input/thumbstick/click"),
+                ],
+            },
+            ProfileSpec {
+                name: "Index",
+                xr_path: "/interaction_profiles/valve/index_controller",
+                walk: Some("/user/hand/left/input/thumbstick"),
+                turn: Some("/user/hand/right/input/thumbstick"),
+                triggers: [
+                    "/user/hand/left/input/trigger/value",
+                    "/user/hand/right/input/trigger/value",
+                ],
+                grips: Some([
+                    "/user/hand/left/input/squeeze/value",
+                    "/user/hand/right/input/squeeze/value",
+                ]),
+                buttons: &[
+                    (0, "/user/hand/right/input/a/click"),
+                    (1, "/user/hand/right/input/b/click"),
+                    (2, "/user/hand/left/input/a/click"),
+                    (3, "/user/hand/left/input/b/click"),
+                    (5, "/user/hand/left/input/thumbstick/click"),
+                    (6, "/user/hand/right/input/thumbstick/click"),
+                ],
+            },
+            ProfileSpec {
+                name: "Vive",
+                xr_path: "/interaction_profiles/htc/vive_controller",
+                walk: Some("/user/hand/left/input/trackpad"),
+                turn: Some("/user/hand/right/input/trackpad"),
+                triggers: [
+                    "/user/hand/left/input/trigger/value",
+                    "/user/hand/right/input/trigger/value",
+                ],
+                grips: Some([
+                    "/user/hand/left/input/squeeze/click",
+                    "/user/hand/right/input/squeeze/click",
+                ]),
+                buttons: &[
+                    (0, "/user/hand/right/input/trackpad/click"),
+                    (1, "/user/hand/right/input/menu/click"),
+                    (2, "/user/hand/left/input/trackpad/click"),
+                    (4, "/user/hand/left/input/menu/click"),
+                ],
+            },
+            ProfileSpec {
+                name: "WMR",
+                xr_path: "/interaction_profiles/microsoft/motion_controller",
+                walk: Some("/user/hand/left/input/thumbstick"),
+                turn: Some("/user/hand/right/input/thumbstick"),
+                triggers: [
+                    "/user/hand/left/input/trigger/value",
+                    "/user/hand/right/input/trigger/value",
+                ],
+                grips: Some([
+                    "/user/hand/left/input/squeeze/click",
+                    "/user/hand/right/input/squeeze/click",
+                ]),
+                buttons: &[
+                    (0, "/user/hand/right/input/trackpad/click"),
+                    (1, "/user/hand/right/input/menu/click"),
+                    (2, "/user/hand/left/input/trackpad/click"),
+                    (4, "/user/hand/left/input/menu/click"),
+                    (5, "/user/hand/left/input/thumbstick/click"),
+                    (6, "/user/hand/right/input/thumbstick/click"),
+                ],
+            },
+            ProfileSpec {
+                name: "Simple",
+                xr_path: "/interaction_profiles/khr/simple_controller",
+                walk: None,
+                turn: None,
+                triggers: [
+                    "/user/hand/left/input/select/click",
+                    "/user/hand/right/input/select/click",
+                ],
+                grips: None,
+                buttons: &[
+                    (1, "/user/hand/right/input/menu/click"),
+                    (4, "/user/hand/left/input/menu/click"),
+                ],
+            },
+        ];
+        let mut accepted = Vec::new();
+        let mut last_err = None;
+        for spec in PROFILES {
+            let profile = path(spec.xr_path)?;
+            let mut bindings = vec![
+                xr::Binding::new(&triggers[0], path(spec.triggers[0])?),
+                xr::Binding::new(&triggers[1], path(spec.triggers[1])?),
+                xr::Binding::new(&poses[0], path("/user/hand/left/input/grip/pose")?),
+                xr::Binding::new(&poses[1], path("/user/hand/right/input/grip/pose")?),
+                xr::Binding::new(&poses[2], path("/user/hand/right/input/aim/pose")?),
+                xr::Binding::new(&poses[3], path("/user/hand/left/input/aim/pose")?),
+                xr::Binding::new(&haptics[0], path("/user/hand/right/output/haptic")?),
+                xr::Binding::new(&haptics[1], path("/user/hand/left/output/haptic")?),
+            ];
+            if let Some(p) = spec.walk {
+                bindings.push(xr::Binding::new(&walk, path(p)?));
+            }
+            if let Some(p) = spec.turn {
+                bindings.push(xr::Binding::new(&turn, path(p)?));
+            }
+            if let Some([l, r]) = spec.grips {
+                bindings.push(xr::Binding::new(&grips[0], path(l)?));
+                bindings.push(xr::Binding::new(&grips[1], path(r)?));
+            }
+            for &(idx, p) in spec.buttons {
+                bindings.push(xr::Binding::new(&buttons[idx], path(p)?));
+            }
+            match instance.suggest_interaction_profile_bindings(profile, &bindings) {
+                Ok(()) => accepted.push(spec.name),
+                Err(err) => {
+                    log::debug!("Horizon VR: {} controller bindings skipped: {err}", spec.name);
+                    last_err = Some(err);
+                }
+            }
+        }
+        if accepted.is_empty() {
+            let err = last_err.map_or_else(|| String::from("none accepted"), |e| e.to_string());
+            return Err(format!("controller bindings: {err}"));
+        }
         session.attach_action_sets(&[&set]).map_err(e)?;
         let space = |a: &xr::Action<xr::Posef>| {
             a.create_space(session, xr::Path::NULL, xr::Posef::IDENTITY)
@@ -1918,7 +2261,10 @@ impl Input {
         };
         let grip_spaces = [space(&poses[0])?, space(&poses[1])?];
         let aim_spaces = [space(&poses[3])?, space(&poses[2])?];
-        log::info!("Horizon VR: controllers ready (Touch bindings)");
+        log::info!(
+            "Horizon VR: controllers ready (profiles: {})",
+            accepted.join(", ")
+        );
         Ok(Self {
             grip_spaces,
             aim_spaces,
@@ -2350,6 +2696,8 @@ struct Gui {
     panel: Option<(glam::Vec3, glam::Quat)>,
     /// Where the main controller's ray meets the panel, 0..1 across and down.
     pointer: Option<[f32; 2]>,
+    /// Physical GUI touch click when the hand pokes close to the panel.
+    touch: bool,
     /// The game is in a world with no menu: the HUD shows on the offhand's wrist.
     hud: bool,
     /// The panel's size (meters) when placed.
@@ -2360,6 +2708,7 @@ static GUI: Mutex<Gui> = Mutex::new(Gui {
     open: false,
     panel: None,
     pointer: None,
+    touch: false,
     hud: false,
     size: [0.0; 2],
 });
@@ -2368,7 +2717,10 @@ static GUI: Mutex<Gui> = Mutex::new(Gui {
 /// room, x right and y up across the picture) and size in meters.
 pub fn wrist_hud() -> Option<(glam::Vec3, glam::Quat, [f32; 2])> {
     let g = GUI.lock().unwrap_or_else(|e| e.into_inner());
-    (g.hud && !g.open && !HUD_HEAD.load(std::sync::atomic::Ordering::Relaxed))
+    (g.hud
+        && !g.open
+        && !HUD_HIDE.load(std::sync::atomic::Ordering::Relaxed)
+        && !HUD_HEAD.load(std::sync::atomic::Ordering::Relaxed))
         .then_some(g.panel.map(|(c, r)| (c, r, g.size)))
         .flatten()
 }
@@ -2831,9 +3183,11 @@ pub fn reversed() -> bool {
     REVERSE_HANDS.load(std::sync::atomic::Ordering::Relaxed)
 }
 
-/// `HUDLock.HEAD`: `hudDistance` ahead of the head, as wide as the menu panel.
-const HUD_DISTANCE: f32 = 1.25;
-
+static HUD_SCALE_BITS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0x3F80_0000); // 1.0
+static HUD_DISTANCE_BITS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0x3FA0_0000); // 1.25
+static HUD_OPACITY_BITS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0x3F80_0000); // 1.0
+static HUD_HIDE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static PHYSICAL_GUI: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static HUD_HEAD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// `vrHudLockMode`: HEAD (true) or WRIST.
@@ -2841,8 +3195,65 @@ pub fn set_hud_head(head: bool) {
     HUD_HEAD.store(head, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// `hudScale` (`0.35..=2.5`, default `1.0`).
+pub fn set_hud_scale(scale: f32) {
+    let v = if scale.is_finite() { scale.clamp(0.35, 2.5) } else { 1.0 };
+    HUD_SCALE_BITS.store(v.to_bits(), std::sync::atomic::Ordering::Relaxed);
+}
+
+fn hud_scale() -> f32 {
+    f32::from_bits(HUD_SCALE_BITS.load(std::sync::atomic::Ordering::Relaxed)).clamp(0.35, 2.5)
+}
+
+/// `hudDistance` (`0.25..=5.0` meters, default `1.25`).
+pub fn set_hud_distance(dist: f32) {
+    let v = if dist.is_finite() { dist.clamp(0.25, 5.0) } else { 1.25 };
+    HUD_DISTANCE_BITS.store(v.to_bits(), std::sync::atomic::Ordering::Relaxed);
+}
+
+fn hud_distance() -> f32 {
+    f32::from_bits(HUD_DISTANCE_BITS.load(std::sync::atomic::Ordering::Relaxed)).clamp(0.25, 5.0)
+}
+
+/// `hudOpacity` (`0.15..=1.0`, default `1.0`).
+pub fn set_hud_opacity(opacity: f32) {
+    let v = if opacity.is_finite() { opacity.clamp(0.15, 1.0) } else { 1.0 };
+    HUD_OPACITY_BITS.store(v.to_bits(), std::sync::atomic::Ordering::Relaxed);
+}
+
+fn hud_opacity() -> f32 {
+    f32::from_bits(HUD_OPACITY_BITS.load(std::sync::atomic::Ordering::Relaxed)).clamp(0.15, 1.0)
+}
+
+/// `vrHideHud`: hides the 3D HUD panel while in a world.
+pub fn set_hud_hide(hide: bool) {
+    HUD_HIDE.store(hide, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// `physicalGuiEnabled`: brings menus closer and allows controller poke interaction.
+pub fn set_physical_gui(on: bool) {
+    PHYSICAL_GUI.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+fn physical_gui() -> bool {
+    PHYSICAL_GUI.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+fn gui_width() -> f32 {
+    if physical_gui() { 0.85 } else { GUI_WIDTH }
+}
+
+fn gui_distance() -> f32 {
+    if physical_gui() { 0.65 } else { GUI_DISTANCE }
+}
+
 fn hud_width() -> f32 {
-    if HUD_HEAD.load(std::sync::atomic::Ordering::Relaxed) { GUI_WIDTH } else { HUD_WIDTH }
+    let base = if HUD_HEAD.load(std::sync::atomic::Ordering::Relaxed) {
+        GUI_WIDTH
+    } else {
+        HUD_WIDTH
+    };
+    base * hud_scale()
 }
 
 static CAMERA_FOV_BITS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0x428C_0000); // 70.0
@@ -2850,6 +3261,28 @@ static CAMERA_FOV_BITS: std::sync::atomic::AtomicU32 = std::sync::atomic::Atomic
 /// `handCameraFov`, degrees.
 pub fn set_camera_fov(fov: f32) {
     CAMERA_FOV_BITS.store(fov.to_bits(), std::sync::atomic::Ordering::Relaxed);
+}
+
+static RENDER_SCALE_BITS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0x3F80_0000); // 1.0
+static STENCIL_ON: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
+/// `renderScaleFactor` (area multiplier `0.5..=2.0`, default `1.0`).
+pub fn set_render_scale(scale: f32) {
+    let clamped = if scale.is_finite() { scale.clamp(0.5, 2.0) } else { 1.0 };
+    RENDER_SCALE_BITS.store(clamped.to_bits(), std::sync::atomic::Ordering::Relaxed);
+}
+
+fn render_scale() -> f32 {
+    f32::from_bits(RENDER_SCALE_BITS.load(std::sync::atomic::Ordering::Relaxed)).clamp(0.5, 2.0)
+}
+
+/// `stencilOn`: mask the unseen corners of each stereo eye early in depth.
+pub fn set_stencil_on(on: bool) {
+    STENCIL_ON.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn stencil_on() -> bool {
+    STENCIL_ON.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 /// Whether the game shows its HUD this frame (in a world, no menu); it then draws the HUD over
@@ -2860,7 +3293,7 @@ pub fn set_hud(shown: bool) {
 
 fn hud_shown() -> bool {
     let g = GUI.lock().unwrap_or_else(|e| e.into_inner());
-    g.hud && !g.open
+    g.hud && !g.open && !HUD_HIDE.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 /// Whether the renderer should clear the world from the window's picture before the HUD, so the
@@ -2925,6 +3358,11 @@ pub fn gui_pointer() -> Option<[f32; 2]> {
     GUI.lock().unwrap_or_else(|e| e.into_inner()).pointer
 }
 
+/// True when `physicalGuiEnabled` is on and the main hand is poking the floating menu panel.
+pub fn gui_touch() -> bool {
+    GUI.lock().unwrap_or_else(|e| e.into_inner()).touch
+}
+
 impl Running {
     /// The game's picture for the panel (`held`), copied with this frame's commands.
     fn keep_frame(
@@ -2946,7 +3384,9 @@ impl Running {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: frame.format(),
-                usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
+                usage: wgpu::TextureUsages::COPY_DST
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             }));
         }
@@ -2968,22 +3408,27 @@ impl Running {
             .held
             .as_ref()
             .map_or(9.0 / 16.0, |h| h.height() as f32 / h.width().max(1) as f32);
-        let width = if hud_shown() { hud_width() } else { GUI_WIDTH };
+        let width = if hud_shown() { hud_width() } else { gui_width() };
         [width, width * aspect]
     }
 
     /// Opens the panel ahead of the head, level, facing it; finds where the laser meets it.
     fn place_gui(&mut self) {
         let size = self.panel_size();
+        let hide_hud = HUD_HIDE.load(std::sync::atomic::Ordering::Relaxed);
+        let phys_gui = physical_gui();
+        let hud_dist = hud_distance();
+        let gui_dist = gui_distance();
         let mut gui = GUI.lock().unwrap_or_else(|e| e.into_inner());
         gui.size = size;
+        gui.touch = false;
         if !gui.open {
             gui.panel = None;
             gui.pointer = None;
-            if gui.hud && HUD_HEAD.load(std::sync::atomic::Ordering::Relaxed) {
+            if gui.hud && !hide_hud && HUD_HEAD.load(std::sync::atomic::Ordering::Relaxed) {
                 let hmd = self.hmd;
-                gui.panel = Some((hmd.translation() + hmd.direction() * HUD_DISTANCE, hmd.rotation()));
-            } else if gui.hud {
+                gui.panel = Some((hmd.translation() + hmd.direction() * hud_dist, hmd.rotation()));
+            } else if gui.hud && !hide_hud {
                 // `GuiHandler`'s WRIST lock: on the inside of the offhand's wrist, its top toward
                 // the fingers, facing the body.
                 let grip = POSES
@@ -3010,10 +3455,10 @@ impl Running {
         }
         let hmd = self.hmd;
         if gui.panel.is_none() {
-            // `GuiHandler.onScreenChanged`: 1 m along the head's look (up and down too, so it
+            // `GuiHandler.onScreenChanged`: ahead along the head's look (up and down too, so it
             // opens in the middle of the view), facing the head (`rotationY(yaw).rotateX(pitch)`).
             let look = hmd.direction().normalize_or(glam::Vec3::NEG_Z);
-            let centre = hmd.translation() + look * GUI_DISTANCE;
+            let centre = hmd.translation() + look * gui_dist;
             let pitch = look.y.clamp(-1.0, 1.0).asin();
             let yaw = std::f32::consts::PI + look.x.atan2(look.z);
             let turn = glam::Quat::from_rotation_y(yaw) * glam::Quat::from_rotation_x(pitch);
@@ -3022,6 +3467,17 @@ impl Running {
         let (centre, turn) = gui.panel.expect("placed");
         gui.pointer = self.hands_aim(0).and_then(|aim| {
             let normal = turn * glam::Vec3::Z;
+            if phys_gui {
+                let local = turn.inverse() * (aim.translation() - centre);
+                if local.z.abs() <= 0.045 {
+                    let u = local.x / size[0] + 0.5;
+                    let v = 0.5 - local.y / size[1];
+                    if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
+                        gui.touch = true;
+                        return Some([u, v]);
+                    }
+                }
+            }
             let dir = aim.direction();
             let denom = dir.dot(normal);
             if denom.abs() < 1e-5 {
@@ -3065,6 +3521,137 @@ impl Running {
     }
 }
 
+struct PanelAlpha {
+    format: wgpu::TextureFormat,
+    pipeline: wgpu::RenderPipeline,
+    layout: wgpu::BindGroupLayout,
+    uniform: wgpu::Buffer,
+}
+
+impl PanelAlpha {
+    fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        const WGSL: &str = r#"
+@group(0) @binding(0) var src_tex: texture_2d<f32>;
+@group(0) @binding(1) var<uniform> u: vec4<f32>;
+struct O { @builtin(position) p: vec4<f32>, @location(0) uv: vec2<f32> };
+@vertex fn vs(@builtin(vertex_index) v: u32) -> O {
+    let uv = vec2<f32>(f32((v << 1u) & 2u), f32(v & 2u));
+    var o: O;
+    o.p = vec4<f32>(uv * vec2<f32>(2.0, -2.0) + vec2<f32>(-1.0, 1.0), 0.0, 1.0);
+    o.uv = uv;
+    return o;
+}
+@fragment fn fs(o: O) -> @location(0) vec4<f32> {
+    let dims = vec2<f32>(textureDimensions(src_tex));
+    let px = vec2<i32>(clamp(o.uv, vec2<f32>(0.0), vec2<f32>(0.9999)) * dims);
+    let c = textureLoad(src_tex, px, 0);
+    return vec4<f32>(c.rgb, c.a * u.x);
+}
+"#;
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Horizon VR panel alpha"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+            ],
+        });
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Horizon VR panel alpha"),
+            source: wgpu::ShaderSource::Wgsl(WGSL.into()),
+        });
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Horizon VR panel alpha"),
+            bind_group_layouts: &[Some(&layout)],
+            ..Default::default()
+        });
+        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Horizon VR panel alpha"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs"),
+                compilation_options: Default::default(),
+                buffers: &[],
+            },
+            primitive: Default::default(),
+            depth_stencil: None,
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fs"),
+                compilation_options: Default::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview_mask: None,
+            cache: None,
+        });
+        let uniform = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Horizon VR panel alpha uniform"),
+            size: 16,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        Self { format, pipeline, layout, uniform }
+    }
+
+    fn copy_with_alpha(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        encoder: &mut wgpu::CommandEncoder,
+        src: &wgpu::Texture,
+        dst: &wgpu::Texture,
+        alpha: f32,
+    ) {
+        queue.write_buffer(&self.uniform, 0, &bytemuck_f32(&[alpha, 0.0, 0.0, 0.0]));
+        let src_view = src.create_view(&Default::default());
+        let dst_view = dst.create_view(&Default::default());
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Horizon VR panel alpha"),
+            layout: &self.layout,
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::TextureView(&src_view) },
+                wgpu::BindGroupEntry { binding: 1, resource: self.uniform.as_entire_binding() },
+            ],
+        });
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Horizon VR panel alpha"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &dst_view,
+                resolve_target: None,
+                depth_slice: None,
+                ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), store: wgpu::StoreOp::Store },
+            })],
+            ..Default::default()
+        });
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &group, &[]);
+        pass.draw(0..3, 0..1);
+    }
+}
+
 /// Ends the frame with the menu panel over the world (`projection`, when the eyes drew).
 #[allow(clippy::too_many_arguments)]
 fn end_panel(
@@ -3072,6 +3659,7 @@ fn end_panel(
     space: &xr::Space,
     screen: &mut Screen,
     held: &wgpu::Texture,
+    panel_alpha: &mut Option<PanelAlpha>,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     time: xr::Time,
@@ -3091,7 +3679,20 @@ fn end_panel(
             .map_err(|e| e.to_string())?;
         let image = &screen.images[index as usize];
         let mut encoder = device.create_command_encoder(&Default::default());
-        encoder.copy_texture_to_texture(held.as_image_copy(), image.as_image_copy(), held.size());
+        let hud = hud_shown();
+        let opacity = if hud { hud_opacity() } else { 1.0 };
+        if hud && opacity < 0.999 {
+            let dst_format = image.format();
+            if panel_alpha.as_ref().is_none_or(|p| p.format != dst_format) {
+                *panel_alpha = Some(PanelAlpha::new(device, dst_format));
+            }
+            panel_alpha
+                .as_ref()
+                .expect("made above")
+                .copy_with_alpha(device, queue, &mut encoder, held, image, opacity);
+        } else {
+            encoder.copy_texture_to_texture(held.as_image_copy(), image.as_image_copy(), held.size());
+        }
         queue.submit([encoder.finish()]);
         // The laser's dot on the menu.
         let (pointer, panel) = {
@@ -3154,7 +3755,7 @@ fn end_panel(
                 .map_err(|e| e.to_string());
         };
         let hud = hud_shown();
-        let width = if hud { hud_width() } else { GUI_WIDTH };
+        let width = if hud { hud_width() } else { gui_width() };
         let [w, h] = [width, width * size[1] as f32 / size[0].max(1) as f32];
         let quad = xr::CompositionLayerQuad::new()
             .space(space)
@@ -3199,5 +3800,57 @@ fn end_panel(
         stream
             .end(time, xr::EnvironmentBlendMode::OPAQUE, &layers)
             .map_err(|e| e.to_string())
+    }
+}
+
+#[cfg(test)]
+mod loader_discovery_tests {
+    use super::{parse_library_folders_vdf, steamvr_loader_candidates};
+    use std::path::PathBuf;
+
+    #[test]
+    fn parses_library_folders_vdf_paths() {
+        let vdf = r#"
+"libraryfolders"
+{
+    "0"
+    {
+        "path"		"C:\\Program Files (x86)\\Steam"
+        "label"		""
+    }
+    "1"
+    {
+        "path"		"D:\\SteamLibrary"
+        "apps"
+        {
+            "250820" "5000000"
+        }
+    }
+}
+"#;
+        let parsed = parse_library_folders_vdf(vdf);
+        assert_eq!(
+            parsed,
+            vec![
+                PathBuf::from(r"C:\Program Files (x86)\Steam"),
+                PathBuf::from(r"D:\SteamLibrary"),
+            ]
+        );
+    }
+
+    #[test]
+    fn builds_deduplicated_steamvr_loader_candidates() {
+        let roots = vec![
+            PathBuf::from(r"Z:\NonExistentSteamTest"),
+            PathBuf::from(r"Z:/NonExistentSteamTest"),
+        ];
+        let candidates = steamvr_loader_candidates(&roots);
+        assert_eq!(
+            candidates,
+            vec![
+                PathBuf::from(r"Z:\NonExistentSteamTest\steamapps\common\SteamVR\bin\win64\openxr_loader.dll"),
+                PathBuf::from(r"Z:\NonExistentSteamTest\steamapps\common\SteamVR\bin\x64\openxr_loader.dll"),
+            ]
+        );
     }
 }

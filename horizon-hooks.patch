@@ -1,5 +1,5 @@
 diff --git a/Cargo.lock b/Cargo.lock
-index 38a051ec65..364e1a000f 100644
+index 3d27dbf..8cb6da4 100644
 --- a/Cargo.lock
 +++ b/Cargo.lock
 @@ -169,7 +169,7 @@ dependencies = [
@@ -20,7 +20,7 @@ index 38a051ec65..364e1a000f 100644
  ]
  
  [[package]]
-@@ -1182,7 +1182,7 @@ version = "0.5.3"
+@@ -1180,7 +1180,7 @@ version = "0.5.3"
  source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "ab8ecd87370524b461f8557c119c405552c396ed91fc0a8eec68679eab26f94a"
  dependencies = [
@@ -29,7 +29,7 @@ index 38a051ec65..364e1a000f 100644
  ]
  
  [[package]]
-@@ -1257,7 +1257,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -1255,7 +1255,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
  dependencies = [
   "libc",
@@ -38,15 +38,15 @@ index 38a051ec65..364e1a000f 100644
  ]
  
  [[package]]
-@@ -1865,6 +1865,7 @@ dependencies = [
+@@ -1862,6 +1862,7 @@ dependencies = [
   "horizon-telemetry",
   "horizon-theme",
   "horizon-threads",
 + "horizon-vr",
   "horizon-world",
   "log",
-  "miniz_oxide 0.8.9",
-@@ -2037,6 +2038,7 @@ dependencies = [
+  "naga",
+@@ -2039,6 +2040,7 @@ dependencies = [
   "horizon-system",
   "horizon-theme",
   "horizon-threads",
@@ -54,7 +54,7 @@ index 38a051ec65..364e1a000f 100644
   "horizon-world",
   "image-webp",
   "log",
-@@ -2358,7 +2360,7 @@ dependencies = [
+@@ -2357,7 +2359,7 @@ dependencies = [
   "horizon-mod-points",
   "horizon-mod-render",
   "horizon-mod-wasm",
@@ -63,7 +63,7 @@ index 38a051ec65..364e1a000f 100644
   "log",
   "serde",
   "serde_json",
-@@ -2551,7 +2553,7 @@ dependencies = [
+@@ -2517,7 +2519,7 @@ dependencies = [
  name = "horizon-narrator"
  version = "0.1.0"
  dependencies = [
@@ -72,7 +72,7 @@ index 38a051ec65..364e1a000f 100644
   "log",
   "objc2 0.6.5",
   "objc2-app-kit 0.3.2",
-@@ -2861,6 +2863,18 @@ dependencies = [
+@@ -2828,6 +2830,18 @@ dependencies = [
   "windows-sys 0.61.2",
  ]
  
@@ -91,7 +91,7 @@ index 38a051ec65..364e1a000f 100644
  [[package]]
  name = "horizon-world"
  version = "0.1.0"
-@@ -3258,7 +3272,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -3226,7 +3240,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "6aae1df220ece3c0ada96b8153459b67eebe9ae9212258bb0134ae60416fdf76"
  dependencies = [
   "libc",
@@ -100,7 +100,7 @@ index 38a051ec65..364e1a000f 100644
   "pkg-config",
  ]
  
-@@ -3296,6 +3310,16 @@ dependencies = [
+@@ -3264,6 +3278,16 @@ dependencies = [
   "windows-link",
  ]
  
@@ -117,7 +117,7 @@ index 38a051ec65..364e1a000f 100644
  [[package]]
  name = "libm"
  version = "0.2.16"
-@@ -4225,6 +4249,26 @@ dependencies = [
+@@ -4193,6 +4217,26 @@ dependencies = [
   "libc",
  ]
  
@@ -144,7 +144,7 @@ index 38a051ec65..364e1a000f 100644
  [[package]]
  name = "orbclient"
  version = "0.3.55"
-@@ -4251,7 +4295,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+@@ -4219,7 +4263,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
  dependencies = [
   "libc",
@@ -153,7 +153,7 @@ index 38a051ec65..364e1a000f 100644
  ]
  
  [[package]]
-@@ -4786,7 +4830,7 @@ dependencies = [
+@@ -4754,7 +4798,7 @@ dependencies = [
   "once_cell",
   "socket2 0.6.5",
   "tracing",
@@ -162,7 +162,7 @@ index 38a051ec65..364e1a000f 100644
  ]
  
  [[package]]
-@@ -5112,7 +5156,7 @@ dependencies = [
+@@ -5080,7 +5124,7 @@ dependencies = [
   "errno",
   "libc",
   "linux-raw-sys 0.12.1",
@@ -171,7 +171,7 @@ index 38a051ec65..364e1a000f 100644
  ]
  
  [[package]]
-@@ -5666,7 +5710,7 @@ dependencies = [
+@@ -5634,7 +5678,7 @@ dependencies = [
   "getrandom 0.4.3",
   "once_cell",
   "rustix 1.1.5",
@@ -180,7 +180,7 @@ index 38a051ec65..364e1a000f 100644
  ]
  
  [[package]]
-@@ -6656,7 +6700,7 @@ dependencies = [
+@@ -6624,7 +6668,7 @@ dependencies = [
   "js-sys",
   "khronos-egl",
   "libc",
@@ -189,7 +189,7 @@ index 38a051ec65..364e1a000f 100644
   "log",
   "naga",
   "naga-types",
-@@ -6744,7 +6788,7 @@ version = "0.1.11"
+@@ -6712,7 +6756,7 @@ version = "0.1.11"
  source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
  dependencies = [
@@ -198,7 +198,7 @@ index 38a051ec65..364e1a000f 100644
  ]
  
  [[package]]
-@@ -7210,7 +7254,7 @@ dependencies = [
+@@ -7178,7 +7222,7 @@ dependencies = [
   "as-raw-xcb-connection",
   "gethostname",
   "libc",
@@ -208,7 +208,7 @@ index 38a051ec65..364e1a000f 100644
   "rustix 1.1.5",
   "x11rb-protocol",
 diff --git a/Cargo.toml b/Cargo.toml
-index f7c2dc27e5..0b1703ed2a 100644
+index bf43882..1bc0fc4 100644
 --- a/Cargo.toml
 +++ b/Cargo.toml
 @@ -2,6 +2,7 @@
@@ -220,7 +220,7 @@ index f7c2dc27e5..0b1703ed2a 100644
      "crates/horizon-game-discovery",
      "crates/horizon-cosmetics",
 diff --git a/crates/horizon-client-render/Cargo.toml b/crates/horizon-client-render/Cargo.toml
-index a9121f71a5..420dc31441 100644
+index a9121f7..420dc31 100644
 --- a/crates/horizon-client-render/Cargo.toml
 +++ b/crates/horizon-client-render/Cargo.toml
 @@ -42,6 +42,8 @@ base64 = "0.22"
@@ -242,10 +242,10 @@ index a9121f71a5..420dc31441 100644
  test-support = []
  # The `scene_replay` example's allocator counts allocations (horizon-threads' `alloc-count`).
 diff --git a/crates/horizon-client-render/src/gfx.rs b/crates/horizon-client-render/src/gfx.rs
-index f2b423b48e..363f15e5a5 100644
+index 6b9c354..228736c 100644
 --- a/crates/horizon-client-render/src/gfx.rs
 +++ b/crates/horizon-client-render/src/gfx.rs
-@@ -1520,6 +1520,8 @@ pub struct Renderer {
+@@ -1719,6 +1719,8 @@ pub struct Renderer {
      screen_pipelines: [wgpu::RenderPipeline; 8],
      screen_buffer: wgpu::Buffer,
      screen_capacity: u64,
@@ -254,7 +254,22 @@ index f2b423b48e..363f15e5a5 100644
      entity_group: wgpu::BindGroup,
      /// The layout of `entity_group`, for the native shadow pass.
      entity_bindings: wgpu::BindGroupLayout,
-@@ -4422,6 +4424,7 @@ impl Renderer {
+@@ -4595,7 +4597,13 @@ impl Renderer {
+             world_primitives::DEFAULT_CAPACITY,
+             world_primitives::DEFAULT_CAPACITY,
+         );
+-        let views = world_views::Kept::new(flipped, translucent_flipped, entity_pipeline_with);
++        let views = world_views::Kept::new(
++            &device,
++            frame_format,
++            flipped,
++            translucent_flipped,
++            entity_pipeline_with,
++        );
+         Ok(Self {
+             msaa,
+             display: None,
+@@ -4718,6 +4726,7 @@ impl Renderer {
              screen_pipelines,
              screen_buffer,
              screen_capacity,
@@ -262,7 +277,7 @@ index f2b423b48e..363f15e5a5 100644
              entity_group,
              entity_bindings,
              prepared_models: None,
-@@ -6891,7 +6894,7 @@ impl Renderer {
+@@ -7391,7 +7400,7 @@ impl Renderer {
      ) -> JoinedFrusta {
          let views = ViewSet::single(self.screen_view(fov_degrees, yaw, pitch, depth_far));
          let planes = frustum(views.cull().view_proj(bob));
@@ -271,7 +286,7 @@ index f2b423b48e..363f15e5a5 100644
      }
      /// A conservative view for geometry built before TAA chooses this frame's
      /// jitter. Cover a whole rendered pixel on each side, at the configured
-@@ -10772,7 +10775,11 @@ impl Renderer {
+@@ -11923,7 +11932,19 @@ impl Renderer {
              );
          }
          if !frame.title {
@@ -280,14 +295,22 @@ index f2b423b48e..363f15e5a5 100644
 +                translucent_particle_quads,
 +                base_quads - translucent_item_quads - translucent_particle_quads,
 +            );
-+            self.draw_world_views(&mut encoder, frame, globals, flat_frame, entity_quads, particles, cloud_quads);
-             let (depth, depth_size) = match &scaled {
-                 Some((_, depth)) => (depth, self.world_post.size().unwrap_or(size)),
-                 None => (&self.depth, size),
-@@ -10803,6 +10810,10 @@ impl Renderer {
-                     filtered: &self.sprite_sampler,
-                 },
-             });
++            self.draw_world_views(
++                &mut encoder,
++                frame,
++                globals,
++                flat_frame,
++                entity_quads,
++                particles,
++                cloud_quads,
++            );
+             if native_render::world_drawn_hooked() {
+                 let (depth, depth_size) = match &scaled {
+                     Some((_, depth)) => (depth, self.world_post.size().unwrap_or(size)),
+@@ -11956,6 +11977,10 @@ impl Renderer {
+                     },
+                 });
+             }
 +        } else {
 +            // VR on the title screen: the panorama around the headset (Vivecraft's menu world).
 +            #[cfg(feature = "vr")]
@@ -295,7 +318,7 @@ index f2b423b48e..363f15e5a5 100644
          }
          // A 0.2 pack in SDR: its picture finishes on 8 bits before the hand, the camera overlays
          // and the HUD draw over it (`overlay_format`).
-@@ -10840,6 +10851,24 @@ impl Renderer {
+@@ -11994,6 +12019,24 @@ impl Renderer {
              hand_drawn: !pack_draws_hand,
              hand_view_proj,
          };
@@ -320,7 +343,7 @@ index f2b423b48e..363f15e5a5 100644
          let readback =
              self.draw_overlay(&mut encoder, frame, &view_target, &target_texture, &overlay);
          if culling && let Some(cull) = &mut self.cull {
-@@ -10882,6 +10911,8 @@ impl Renderer {
+@@ -12044,6 +12087,8 @@ impl Renderer {
              .or(self.offscreen.as_ref())
          {
              self.readback.present(&self.device, &mut encoder, image);
@@ -329,7 +352,7 @@ index f2b423b48e..363f15e5a5 100644
          }
          // With frame generation on a window, its real frame.
          let shown = surface_frame.as_ref().map(|f| &f.texture);
-@@ -11200,7 +11231,60 @@ impl Renderer {
+@@ -12444,7 +12489,60 @@ impl Renderer {
          {
              hdr.tonemap(encoder, timing.as_mut());
          }
@@ -391,11 +414,33 @@ index f2b423b48e..363f15e5a5 100644
              let attachments = [Some(wgpu::RenderPassColorAttachment {
                  view: view_target,
                  resolve_target: None,
+@@ -12808,6 +12906,21 @@ pub(crate) fn world_projection(fov_degrees: f32, aspect: f32, far: f32) -> Mat4
+     Mat4::perspective_rh(fov_degrees.to_radians(), aspect, far, NEAR_PLANE)
+ }
+ 
++/// Reversed-Z right-handed off-center perspective for asymmetric VR eye frusta
++/// (`[tan_left, tan_right, tan_down, tan_up]`, matching `world_projection`'s `[0, 1]` reversed-Z).
++pub(crate) fn world_projection_asymmetric([l, r, b, t]: [f32; 4], far: f32) -> Mat4 {
++    let near = NEAR_PLANE;
++    let inv_w = 1.0 / (r - l);
++    let inv_h = 1.0 / (t - b);
++    let inv_d = 1.0 / (far - near);
++    Mat4::from_cols(
++        glam::Vec4::new(2.0 * inv_w, 0.0, 0.0, 0.0),
++        glam::Vec4::new(0.0, 2.0 * inv_h, 0.0, 0.0),
++        glam::Vec4::new((r + l) * inv_w, (t + b) * inv_h, near * inv_d, -1.0),
++        glam::Vec4::new(0.0, 0.0, (near * far) * inv_d, 0.0),
++    )
++}
++
+ /// Calls `draw(first, quads)` for each run of a mesh's solid quads that can
+ /// face `eye` (`view::projection_center`), the mesh at the camera-relative
+ /// `origin`; all of them when there is no eye.
 diff --git a/crates/horizon-client-render/src/gfx/device.rs b/crates/horizon-client-render/src/gfx/device.rs
-index bbd5bc53fa..06fe4c2381 100644
+index b2bda6f..d66e8e8 100644
 --- a/crates/horizon-client-render/src/gfx/device.rs
 +++ b/crates/horizon-client-render/src/gfx/device.rs
-@@ -548,6 +548,12 @@ async fn open_backend(
+@@ -587,6 +587,12 @@ async fn open_backend(
      };
      let dxc_found = dxc.is_some();
      let (instance, surface, adapter) = dxc.unwrap_or((instance, surface, adapter));
@@ -409,18 +454,40 @@ index bbd5bc53fa..06fe4c2381 100644
          crate::crash::set_detail(
              "DirectX 12 shader compiler",
 diff --git a/crates/horizon-client-render/src/gfx/panorama.rs b/crates/horizon-client-render/src/gfx/panorama.rs
-index feef779e58..72bb4615fe 100644
+index feef779..010b749 100644
 --- a/crates/horizon-client-render/src/gfx/panorama.rs
 +++ b/crates/horizon-client-render/src/gfx/panorama.rs
-@@ -166,6 +166,17 @@ fn projection(width: u32, height: u32, yaw: f32, pitch: f32) -> Mat4 {
+@@ -166,6 +166,39 @@ fn projection(width: u32, height: u32, yaw: f32, pitch: f32) -> Mat4 {
          * Mat4::from_rotation_y(yaw.to_radians())
  }
  
 +/// A headset eye's panorama projection: `projection`'s, from the eye's own field of view, shape
 +/// and turn (Horizon degrees).
 +// shortcut: the roll's sign follows `projection`'s flipped frame by eye; check it in the headset.
-+pub(super) fn eye_projection(fov_degrees: f32, aspect: f32, yaw: f32, pitch: f32, roll: f32) -> Mat4 {
-+    Mat4::perspective_rh(fov_degrees.to_radians(), aspect, 0.05, 10.0)
++pub(super) fn eye_projection(
++    fov_degrees: f32,
++    fov_tangents: Option<[f32; 4]>,
++    aspect: f32,
++    yaw: f32,
++    pitch: f32,
++    roll: f32,
++) -> Mat4 {
++    let proj = match fov_tangents {
++        Some([l, r, b, t]) => {
++            let (near, far) = (0.05f32, 10.0f32);
++            let inv_w = 1.0 / (r - l);
++            let inv_h = 1.0 / (t - b);
++            let inv_d = 1.0 / (near - far);
++            Mat4::from_cols(
++                glam::Vec4::new(2.0 * inv_w, 0.0, 0.0, 0.0),
++                glam::Vec4::new(0.0, 2.0 * inv_h, 0.0, 0.0),
++                glam::Vec4::new((r + l) * inv_w, (t + b) * inv_h, far * inv_d, -1.0),
++                glam::Vec4::new(0.0, 0.0, (near * far) * inv_d, 0.0),
++            )
++        }
++        None => Mat4::perspective_rh(fov_degrees.to_radians(), aspect, 0.05, 10.0),
++    };
++    proj
 +        * Mat4::from_rotation_z(roll.to_radians())
 +        * Mat4::from_rotation_x(std::f32::consts::PI)
 +        * Mat4::from_rotation_x(pitch.to_radians())
@@ -430,7 +497,7 @@ index feef779e58..72bb4615fe 100644
  pub(super) struct Panorama {
      pipeline: wgpu::RenderPipeline,
      layout: wgpu::BindGroupLayout,
-@@ -355,6 +366,11 @@ impl Panorama {
+@@ -355,6 +388,11 @@ impl Panorama {
          })
      }
  
@@ -443,10 +510,10 @@ index feef779e58..72bb4615fe 100644
      pub(super) fn draw(&self, pass: &mut wgpu::RenderPass<'_>) {
          let Some(cube) = &self.cube else {
 diff --git a/crates/horizon-client-render/src/gfx/surface_setup.rs b/crates/horizon-client-render/src/gfx/surface_setup.rs
-index f34df37fb5..8b4e72225a 100644
+index 2b0998c..0045791 100644
 --- a/crates/horizon-client-render/src/gfx/surface_setup.rs
 +++ b/crates/horizon-client-render/src/gfx/surface_setup.rs
-@@ -193,6 +193,10 @@ pub(super) async fn open_adapter(
+@@ -209,6 +209,10 @@ pub(super) async fn open_adapter(
      };
      #[cfg(not(target_os = "macos"))]
      let opened = match info.backend {
@@ -458,10 +525,10 @@ index f34df37fb5..8b4e72225a 100644
          _ => None,
      };
 diff --git a/crates/horizon-client-render/src/gfx/view_sections.rs b/crates/horizon-client-render/src/gfx/view_sections.rs
-index 3968b93fad..b41742e4e9 100644
+index 3968b93..9a25c38 100644
 --- a/crates/horizon-client-render/src/gfx/view_sections.rs
 +++ b/crates/horizon-client-render/src/gfx/view_sections.rs
-@@ -158,12 +158,40 @@ impl Renderer {
+@@ -158,12 +158,43 @@ impl Renderer {
      pub(super) fn ask_world_views(
          &mut self,
          camera: DVec3,
@@ -486,7 +553,7 @@ index 3968b93fad..b41742e4e9 100644
 +            .filter_map(|(v, id)| v.map(|v| (v, id)));
 +        #[cfg(feature = "vr")]
 +        for (eye, id) in lens.into_iter().chain(eyes.into_iter().flatten().zip(horizon_vr::EYE_IDS)) {
-+            let view = crate::render_views::WorldView::new(
++            let mut view = crate::render_views::WorldView::new(
 +                id,
 +                DVec3::from_array(eye.camera),
 +                eye.yaw,
@@ -495,6 +562,9 @@ index 3968b93fad..b41742e4e9 100644
 +                eye.size,
 +            )
 +            .with_roll(eye.roll);
++            if let Some(tangents) = eye.fov_tangents {
++                view = view.with_fov_tangents(tangents);
++            }
 +            if let Err(e) = sections.views.push(view) {
 +                log::warn!("Horizon VR: eye view refused: {:?}", e.reason);
 +            }
@@ -502,7 +572,7 @@ index 3968b93fad..b41742e4e9 100644
          sections.asked = true;
          let views = sections.views.views().iter().map(|v| Frustum {
              planes: super::frustum(ViewCamera::new(v, camera, far).view_proj),
-@@ -189,11 +217,16 @@ impl Renderer {
+@@ -189,11 +220,16 @@ impl Renderer {
          radius: i32,
      ) {
          let sections = &mut self.world_views.sections;
@@ -522,10 +592,138 @@ index 3968b93fad..b41742e4e9 100644
          } else if !sections.asked {
              sections.ask(self.world_view_side);
 diff --git a/crates/horizon-client-render/src/gfx/world_views.rs b/crates/horizon-client-render/src/gfx/world_views.rs
-index 1159fa551b..963db4087e 100644
+index 07b5c53..5497510 100644
 --- a/crates/horizon-client-render/src/gfx/world_views.rs
 +++ b/crates/horizon-client-render/src/gfx/world_views.rs
-@@ -156,6 +156,13 @@ struct Lists {
+@@ -47,12 +47,20 @@ impl ViewCamera {
+         if view.mirror {
+             rotation = Mat4::from_scale(Vec3::new(-1.0, 1.0, 1.0)) * rotation;
+         }
+-        let projection = super::world_projection(view.fov_degrees, aspect, far);
++        let projection = match view.fov_tangents {
++            Some(tangents) => super::world_projection_asymmetric(tangents, far),
++            None => super::world_projection(view.fov_degrees, aspect, far),
++        };
+         let offset = (view.camera - camera).as_vec3();
+         let mut own_view_proj = projection * rotation;
+         let mut world_view = [if view.mirror { -1.0 } else { 1.0 }, 0.0, 0.0, 0.0];
+         if let Some(plane) = view.camera_clip_plane() {
+-            let k = corner_cosine((view.fov_degrees.to_radians() / 2.0).tan(), aspect);
++            let tan_half = view
++                .fov_tangents
++                .map_or((view.fov_degrees.to_radians() / 2.0).tan(), |[_, _, b, t]| {
++                    (-b).max(t)
++                });
++            let k = corner_cosine(tan_half, aspect);
+             own_view_proj = near_plane_on(own_view_proj, plane, k);
+             // Depth at `w` is a constant plus `k * -plane.w / w`: a shift of that term's share
+             // moves a point the same share of its distance.
+@@ -116,16 +124,22 @@ pub(super) struct Kept {
+     targets: HashMap<u64, Target>,
+     flipped: Flipped,
+     clipped_entities: wgpu::RenderPipeline,
++    #[cfg(feature = "vr")]
++    eye_mask: wgpu::RenderPipeline,
+     pub sections: super::view_sections::Sections,
+ }
+ 
+ impl Kept {
+     /// `entity` is gfx.rs's `entity_pipeline_with`.
+     pub fn new(
++        device: &wgpu::Device,
++        color_format: wgpu::TextureFormat,
+         solid: SolidPipeline,
+         translucent: wgpu::RenderPipeline,
+         entity: impl Fn(EntityPipelineOptions<'_>) -> wgpu::RenderPipeline,
+     ) -> Self {
++        #[cfg(not(feature = "vr"))]
++        let _ = (device, color_format);
+         // gfx.rs's `entity_pipeline` without its constant bias, through `fs_entity_clipped`
+         let clipped_entities = entity(EntityPipelineOptions {
+             label: "Entities (clipped world view)",
+@@ -139,15 +153,81 @@ impl Kept {
+             fragment: "fs_entity_clipped",
+             write_mask: wgpu::ColorWrites::ALL,
+         });
++        #[cfg(feature = "vr")]
++        let eye_mask = eye_mask_pipeline(device, color_format);
+         Self {
+             targets: HashMap::new(),
+             flipped: Flipped { solid, translucent },
+             clipped_entities,
++            #[cfg(feature = "vr")]
++            eye_mask,
+             sections: Default::default(),
+         }
+     }
+ }
+ 
++#[cfg(feature = "vr")]
++fn eye_mask_pipeline(
++    device: &wgpu::Device,
++    color_format: wgpu::TextureFormat,
++) -> wgpu::RenderPipeline {
++    const WGSL: &str = r#"
++@vertex fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
++    var pos = array<vec2<f32>, 12>(
++        vec2<f32>(-1.0,  1.0), vec2<f32>(-0.78,  1.0), vec2<f32>(-1.0,  0.78),
++        vec2<f32>( 1.0,  1.0), vec2<f32>( 1.0,  0.78), vec2<f32>( 0.78,  1.0),
++        vec2<f32>(-1.0, -1.0), vec2<f32>(-1.0, -0.78), vec2<f32>(-0.78, -1.0),
++        vec2<f32>( 1.0, -1.0), vec2<f32>( 0.78, -1.0), vec2<f32>( 1.0, -0.78)
++    );
++    return vec4<f32>(pos[i], 1.0, 1.0);
++}
++@fragment fn fs() {}
++"#;
++    let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
++        label: Some("VR eye corner mask"),
++        source: wgpu::ShaderSource::Wgsl(WGSL.into()),
++    });
++    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
++        label: Some("VR eye corner mask"),
++        bind_group_layouts: &[],
++        ..Default::default()
++    });
++    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
++        label: Some("VR eye corner mask"),
++        layout: Some(&layout),
++        vertex: wgpu::VertexState {
++            module: &shader,
++            entry_point: Some("vs"),
++            compilation_options: Default::default(),
++            buffers: &[],
++        },
++        primitive: wgpu::PrimitiveState {
++            cull_mode: None,
++            ..Default::default()
++        },
++        depth_stencil: Some(wgpu::DepthStencilState {
++            format: wgpu::TextureFormat::Depth32Float,
++            depth_write_enabled: Some(true),
++            depth_compare: Some(wgpu::CompareFunction::Always),
++            stencil: Default::default(),
++            bias: Default::default(),
++        }),
++        multisample: Default::default(),
++        fragment: Some(wgpu::FragmentState {
++            module: &shader,
++            entry_point: Some("fs"),
++            compilation_options: Default::default(),
++            targets: &[Some(wgpu::ColorTargetState {
++                format: color_format,
++                blend: None,
++                write_mask: wgpu::ColorWrites::empty(),
++            })],
++        }),
++        multiview_mask: None,
++        cache: None,
++    })
++}
++
+ /// What of the frame the views draw.
+ struct Lists {
+     pub globals: Globals,
+@@ -156,6 +236,13 @@ struct Lists {
      pub flat: bool,
      pub hdr: bool,
      pub entity_quads: u32,
@@ -539,7 +737,7 @@ index 1159fa551b..963db4087e 100644
  }
  
  impl Renderer {
-@@ -170,6 +177,8 @@ impl Renderer {
+@@ -170,6 +257,8 @@ impl Renderer {
          globals: Globals,
          flat: bool,
          entity_quads: u32,
@@ -548,7 +746,7 @@ index 1159fa551b..963db4087e 100644
      ) {
          let views = self.world_views.sections.take_views();
          let [r, g, b, _] = globals.fog_color.map(f64::from);
-@@ -185,6 +194,17 @@ impl Renderer {
+@@ -185,6 +274,17 @@ impl Renderer {
              flat,
              hdr: self.hdr.is_some(),
              entity_quads,
@@ -566,7 +764,7 @@ index 1159fa551b..963db4087e 100644
          };
          let format = self.output.frame.format;
          let mut targets = std::mem::take(&mut self.world_views.targets);
-@@ -217,6 +237,18 @@ impl Renderer {
+@@ -217,6 +317,18 @@ impl Renderer {
              };
              self.uploads
                  .buffer(encoder, &self.globals, 0, bytemuck::bytes_of(&globals));
@@ -585,7 +783,7 @@ index 1159fa551b..963db4087e 100644
              self.draw_world_view(encoder, target, frame, lists, k, view);
              native_render::world_view_drawn(&mut native_render::WorldViewDrawn {
                  id: view.id,
-@@ -233,6 +265,16 @@ impl Renderer {
+@@ -233,6 +345,16 @@ impl Renderer {
                  view_proj: camera.own_view_proj,
                  camera: view.camera,
              });
@@ -602,9 +800,15 @@ index 1159fa551b..963db4087e 100644
          }
          if !views.views().is_empty() {
              self.uploads.buffer(
-@@ -283,9 +325,48 @@ impl Renderer {
+@@ -282,10 +404,54 @@ impl Renderer {
+             }),
              ..Default::default()
          });
++        #[cfg(feature = "vr")]
++        if horizon_vr::EYE_IDS.contains(&view.id) && horizon_vr::stencil_on() {
++            pass.set_pipeline(&self.world_views.eye_mask);
++            pass.draw(0..12, 0..1);
++        }
          pass.set_bind_group(0, &self.group, &[]);
 -        if lists.sky {
 -            pass.set_pipeline(&self.sky);
@@ -654,8 +858,8 @@ index 1159fa551b..963db4087e 100644
          }
          let flat = self.flat.as_ref().filter(|_| lists.flat);
          let flipped = view
-@@ -354,6 +435,105 @@ impl Renderer {
-                 self.draw_sections(&mut pass, &self.indirect, 0, translucent, end - translucent);
+@@ -357,6 +523,106 @@ impl Renderer {
+                 self.draw_sections_from(&mut pass, &self.indirect, 0, first, count, pulled);
              }
          }
 +        // The translucent particles after the translucent terrain, as the world pass draws them.
@@ -715,6 +919,7 @@ index 1159fa551b..963db4087e 100644
 +            let aspect = view.size[0] as f32 / view.size[1].max(1) as f32;
 +            let m = super::panorama::eye_projection(
 +                view.fov_degrees,
++                view.fov_tangents,
 +                aspect,
 +                view.yaw - frame.yaw,
 +                view.pitch,
@@ -760,8 +965,91 @@ index 1159fa551b..963db4087e 100644
      }
  }
  
+@@ -496,4 +762,36 @@ mod tests {
+         let camera = ViewCamera::new(&near, DVec3::ZERO, 1000.0);
+         assert_eq!(camera.world_view, [1.0, 0.0, 1.0, 0.0]);
+     }
++
++    #[test]
++    fn asymmetric_projection_matches_symmetric_and_maps_corners() {
++        let tan_v = 35.0f32.to_radians().tan();
++        let aspect = 1.5f32;
++        let tan_h = tan_v * aspect;
++        let sym = super::super::world_projection(70.0, aspect, 512.0);
++        let asym_sym = super::super::world_projection_asymmetric(
++            [-tan_h, tan_h, -tan_v, tan_v],
++            512.0,
++        );
++        assert!(sym.abs_diff_eq(asym_sym, 1e-5), "{sym:?} vs {asym_sym:?}");
++
++        let tangents = [-0.8f32, 1.1, -0.7, 0.9];
++        let proj = super::super::world_projection_asymmetric(tangents, 256.0);
++        let view = native_render::WorldView::new(1, DVec3::ZERO, 0.0, 0.0, 70.0, [100, 100])
++            .with_fov_tangents(tangents);
++        let cam = ViewCamera::new(&view, DVec3::ZERO, 256.0);
++        assert!(cam.own_view_proj.abs_diff_eq(
++            proj * crate::camera::view_matrix_rolled(0.0, 0.0, 0.0),
++            1e-6
++        ));
++        let near = 0.05f32;
++        let p_lb = proj * Vec4::new(tangents[0] * near, tangents[2] * near, -near, 1.0);
++        let p_rt = proj * Vec4::new(tangents[1] * 256.0, tangents[3] * 256.0, -256.0, 1.0);
++        assert!((p_lb.x / p_lb.w + 1.0).abs() < 1e-4);
++        assert!((p_lb.y / p_lb.w + 1.0).abs() < 1e-4);
++        assert!((p_lb.z / p_lb.w - 1.0).abs() < 1e-4);
++        assert!((p_rt.x / p_rt.w - 1.0).abs() < 1e-4);
++        assert!((p_rt.y / p_rt.w - 1.0).abs() < 1e-4);
++        assert!((p_rt.z / p_rt.w).abs() < 1e-4);
++    }
+ }
+diff --git a/crates/horizon-client-render/src/render_views.rs b/crates/horizon-client-render/src/render_views.rs
+index 564ca08..17e3808 100644
+--- a/crates/horizon-client-render/src/render_views.rs
++++ b/crates/horizon-client-render/src/render_views.rs
+@@ -32,6 +32,8 @@ pub struct WorldView {
+     pub roll: f32,
+     /// The vertical field of view, in degrees (1 to 170).
+     pub fov_degrees: f32,
++    /// Optional asymmetric perspective tangents `[tan_left, tan_right, tan_down, tan_up]`.
++    pub fov_tangents: Option<[f32; 4]>,
+     /// The target's width and height, in pixels (1 to [`MAX_WORLD_VIEW_SIDE`]).
+     pub size: [u32; 2],
+     /// The plane behind which nothing is drawn ([`WorldView::with_clip_plane`]).
+@@ -60,6 +62,7 @@ impl WorldView {
+             pitch,
+             roll: 0.0,
+             fov_degrees,
++            fov_tangents: None,
+             size,
+             clip_plane: None,
+             mirror: false,
+@@ -72,6 +75,13 @@ impl WorldView {
+         Self { roll, ..self }
+     }
+ 
++    pub fn with_fov_tangents(self, tangents: [f32; 4]) -> Self {
++        Self {
++            fov_tangents: Some(tangents),
++            ..self
++        }
++    }
++
+     /// Draws only what lies in front of a world-space plane `[x, y, z, d]`: the points `p` with
+     /// `x * p.x + y * p.y + z * p.z + d >= 0`. Terrain, entities and block entities behind it are
+     /// left out, as a wall behind a portal's far side is. The camera must be behind the plane
+@@ -128,6 +138,10 @@ impl WorldView {
+             Some(WorldViewRefusalReason::NotFinite)
+         } else if !(1.0..=170.0).contains(&self.fov_degrees) {
+             Some(WorldViewRefusalReason::FieldOfView(self.fov_degrees))
++        } else if let Some([l, r, b, t]) = self.fov_tangents
++            && (![l, r, b, t].iter().all(|v| v.is_finite()) || !(l < r && b < t))
++        {
++            Some(WorldViewRefusalReason::FieldOfView(self.fov_degrees))
+         } else if !in_side(MAX_WORLD_VIEW_SIDE) {
+             Some(WorldViewRefusalReason::Side(self.size))
+         } else if !in_side(max_side) {
 diff --git a/crates/horizon-client-render/src/ui.rs b/crates/horizon-client-render/src/ui.rs
-index 1188674274..ce2b954d5f 100644
+index 1188674..ce2b954 100644
 --- a/crates/horizon-client-render/src/ui.rs
 +++ b/crates/horizon-client-render/src/ui.rs
 @@ -828,6 +828,12 @@ pub fn menu_background(
@@ -778,7 +1066,7 @@ index 1188674274..ce2b954d5f 100644
          "gui/inworld_menu_background"
      } else {
 diff --git a/crates/horizon-client/Cargo.toml b/crates/horizon-client/Cargo.toml
-index 2b0521084d..0a49738ce6 100644
+index fbb552e..a2bae23 100644
 --- a/crates/horizon-client/Cargo.toml
 +++ b/crates/horizon-client/Cargo.toml
 @@ -29,7 +29,8 @@ horizon-client-gameplay = { path = "../horizon-client-gameplay" }
@@ -792,10 +1080,10 @@ index 2b0521084d..0a49738ce6 100644
  horizon-items = { path = "../horizon-items" }
  horizon-core = { path = "../horizon-core" }
 diff --git a/crates/horizon-client/assets/horizon/lang/en_us.json b/crates/horizon-client/assets/horizon/lang/en_us.json
-index f93197dccd..8e80597bb7 100644
+index d32283e..53c37a2 100644
 --- a/crates/horizon-client/assets/horizon/lang/en_us.json
 +++ b/crates/horizon-client/assets/horizon/lang/en_us.json
-@@ -281,6 +281,7 @@
+@@ -283,6 +283,7 @@
    "horizon.pages.open.split_setup": "Splitscreen...",
    "horizon.pages.open.extras": "Extras...",
    "horizon.pages.open.mods": "Mods...",
@@ -804,10 +1092,10 @@ index f93197dccd..8e80597bb7 100644
    "horizon.pages.open.horizon_graphics": "Horizon Graphics...",
    "horizon.pages.open.controller_binds": "Bindings...",
 diff --git a/crates/horizon-client/src/game.rs b/crates/horizon-client/src/game.rs
-index 202b2575f3..b56cfd9abc 100644
+index 9cfeac9..e50e349 100644
 --- a/crates/horizon-client/src/game.rs
 +++ b/crates/horizon-client/src/game.rs
-@@ -2229,6 +2229,10 @@ impl Game<'_> {
+@@ -2221,6 +2221,10 @@ impl Game<'_> {
              let eye = [x, y + f64::from(e.eye_height), z];
              return Some((eye, pick_view_vector(e.y_rot, e.x_rot)));
          }
@@ -818,7 +1106,7 @@ index 202b2575f3..b56cfd9abc 100644
          Some((self.eye_position()?, pick_view_vector(self.yaw, self.pitch)))
      }
      /// `Player.blockInteractionRange`: the block pick's and mining's reach.
-@@ -4771,7 +4775,9 @@ impl Game<'_> {
+@@ -4766,7 +4770,9 @@ impl Game<'_> {
              self.native_render_gui_pre(&mut gui_canceled);
          }
          // RenderGuiEvent.Pre: a mod's cancel hides the HUD as F1 does.
@@ -829,7 +1117,7 @@ index 202b2575f3..b56cfd9abc 100644
          // Hud.extractRenderState asks `Screen.isInGameUi` twice: such a screen
          // defers the subtitles over itself, and keeps them while F1 hides the
          // rest of the HUD.
-@@ -4802,6 +4808,8 @@ impl Game<'_> {
+@@ -4797,6 +4803,8 @@ impl Game<'_> {
                  && (!spectator || self.spectator_crosshair())
                  && !self.debug_crosshair()
                  && !self.overlay_holds_view()
@@ -838,7 +1126,15 @@ index 202b2575f3..b56cfd9abc 100644
              {
                  let attack = (indicator == 1).then_some(strength);
                  let full = attack.is_some_and(|a| {
-@@ -8502,11 +8510,31 @@ impl Game<'_> {
+@@ -7895,6 +7903,7 @@ impl Game<'_> {
+         &mut self,
+         consume: impl FnOnce(&mut Renderer, &Frame<'_>) -> Result<bool>,
+     ) -> Result<bool> {
++        self.vr_render_tick();
+         self.begin_frame_draws();
+         let prepare = spans::guard("prepare");
+         let mut pr = spans::laps();
+@@ -8545,11 +8554,31 @@ impl Game<'_> {
          };
          self.custom_sky_frame([camera.x, camera.y, camera.z], &sky, (rain, thunder), title);
          pr.lap("pr_celestial");
@@ -871,7 +1167,7 @@ index 202b2575f3..b56cfd9abc 100644
          // GameRenderer.render3dHud: the screen effects after the hand, in
          // its pass (the hand pass draws with `bob * view`).
          if !title {
-@@ -8524,8 +8552,13 @@ impl Game<'_> {
+@@ -8567,8 +8596,13 @@ impl Game<'_> {
                  .as_mut()
                  .and_then(|p| p.attribute("minecraft:scale").ok())
                  .unwrap_or(1.0) as f32;
@@ -887,10 +1183,10 @@ index 202b2575f3..b56cfd9abc 100644
                  size[1].max(1) as f32,
                  depth_far,
 diff --git a/crates/horizon-client/src/game/entities/boats/mod.rs b/crates/horizon-client/src/game/entities/boats/mod.rs
-index cb8a51e434..e546bc7685 100644
+index 6ebb901..d59db1a 100644
 --- a/crates/horizon-client/src/game/entities/boats/mod.rs
 +++ b/crates/horizon-client/src/game/entities/boats/mod.rs
-@@ -450,6 +450,7 @@ impl Game<'_> {
+@@ -459,6 +459,7 @@ impl Game<'_> {
              }
          }
          // controlBoat
@@ -898,7 +1194,7 @@ index cb8a51e434..e546bc7685 100644
          if controlled {
              let [left, right, up, down] = b.input;
              let mut acceleration = 0.0f32;
-@@ -469,6 +470,13 @@ impl Game<'_> {
+@@ -478,6 +479,13 @@ impl Game<'_> {
              if down {
                  acceleration -= 0.005;
              }
@@ -909,11 +1205,11 @@ index cb8a51e434..e546bc7685 100644
 +                    super::vr_vehicle::vr_control_boat(b.input, b.yaw, &mut b.delta_rotation, acceleration);
 +            }
 +            let [left, right, up, _] = paddle_input;
-             let r = b.yaw.to_radians();
-             b.velocity.x += f64::from((-r).sin() * acceleration);
-             b.velocity.z += f64::from(r.cos() * acceleration);
+             let (x, z) = paddle_push(b.yaw, acceleration);
+             b.velocity.x += x;
+             b.velocity.z += z;
 diff --git a/crates/horizon-client/src/game/interface/frame_geometry.rs b/crates/horizon-client/src/game/interface/frame_geometry.rs
-index cae23cba87..2a17a68efc 100644
+index 66c29dd..e28d3d4 100644
 --- a/crates/horizon-client/src/game/interface/frame_geometry.rs
 +++ b/crates/horizon-client/src/game/interface/frame_geometry.rs
 @@ -244,6 +244,8 @@ impl Game<'_> {
@@ -1001,10 +1297,10 @@ index cae23cba87..2a17a68efc 100644
              let shield_size = self.pvp_shield_size();
              if shield_size != 100 && &*stack.item == "minecraft:shield" {
 diff --git a/crates/horizon-client/src/game/interface/options.rs b/crates/horizon-client/src/game/interface/options.rs
-index f8d6ce9491..024f3c046a 100644
+index 0f7b428..45ce7e0 100644
 --- a/crates/horizon-client/src/game/interface/options.rs
 +++ b/crates/horizon-client/src/game/interface/options.rs
-@@ -834,12 +834,10 @@ impl Game<'_> {
+@@ -835,12 +835,10 @@ impl Game<'_> {
      }
  }
  
@@ -1021,7 +1317,7 @@ index f8d6ce9491..024f3c046a 100644
  }
  
  /// The named device can be a connected pad that has not driven the game yet.
-@@ -1018,8 +1016,8 @@ mod fullbright_tests {
+@@ -1019,8 +1017,8 @@ mod fullbright_tests {
          assert!(!fullbright_held(None, false));
          // Single player and a LAN host play their own save; so does a splitscreen seat in P1's.
          assert!(!fullbright_held(Some(true), false));
@@ -1033,7 +1329,7 @@ index f8d6ce9491..024f3c046a 100644
          assert!(!fullbright_held(Some(false), true));
      }
 diff --git a/crates/horizon-client/src/game/interface/pad/mod.rs b/crates/horizon-client/src/game/interface/pad/mod.rs
-index 026382e953..b243c0162f 100644
+index 026382e..48325d6 100644
 --- a/crates/horizon-client/src/game/interface/pad/mod.rs
 +++ b/crates/horizon-client/src/game/interface/pad/mod.rs
 @@ -376,7 +376,11 @@ impl Game<'_> {
@@ -1058,7 +1354,7 @@ index 026382e953..b243c0162f 100644
          let activity = self.pad.activity.observe(&state, &self.settings.controller);
          for (i, (stick, deadzone)) in [
              (&mut state.left, self.settings.controller.move_deadzone),
-@@ -1022,3 +1026,53 @@ impl Game<'_> {
+@@ -1022,3 +1026,56 @@ impl Game<'_> {
          }
      }
  }
@@ -1076,9 +1372,12 @@ index 026382e953..b243c0162f 100644
 +    // With the menu panel up, the right trigger and grip are the laser's clicks.
 +    let menu = horizon_vr::gui_open();
 +    let triggers = [0, 1].map(|k| if taken[k] || (menu && k == 1) { 0.0 } else { vr.triggers[k] });
++    let s = super::vr_settings::vr_settings();
 +    let mut state = PadState {
 +        buttons: 0,
-+        left: super::vr_run::vr_run_stick().unwrap_or(vr.left),
++        left: super::vr_run::vr_run_stick()
++            .unwrap_or(vr.left)
++            .map(|v| (v * s.movement_speed_multiplier).clamp(-1.0, 1.0)),
 +        // The right stick turns (x) and teleports (y): it never looks.
 +        right: [0.0, 0.0],
 +        triggers,
@@ -1100,12 +1399,12 @@ index 026382e953..b243c0162f 100644
 +        (Button::East, vr.east && menu || y_closes),
 +        (Button::West, vr.west),
 +        (Button::North, y_opens),
-+        (Button::LeftBumper, vr.left_bumper && !super::vr_climb_claws::vr_boots_take_grips()),
-+        (Button::RightBumper, vr.right_bumper && !menu && !super::vr_camera::vr_camera_touched() && !super::vr_climb_claws::vr_boots_take_grips()),
++        (Button::LeftBumper, vr.left_bumper && !super::vr_climb_claws::vr_boots_take_grips() && !super::vr_throw::vr_throw_takes_grip(1)),
++        (Button::RightBumper, vr.right_bumper && !menu && !super::vr_camera::vr_camera_touched() && !super::vr_climb_claws::vr_boots_take_grips() && !super::vr_throw::vr_throw_takes_grip(0)),
 +        (Button::Start, vr.start),
 +        // Vivecraft's `autoSprint` (on, `autoSprintThreshold` 0.9): the walk stick pushed all the
 +        // way forward sprints.
-+        (Button::LeftStick, vr.left_stick || (state.left[1] >= 0.9 && !menu)),
++        (Button::LeftStick, vr.left_stick || (s.auto_sprint && state.left[1] >= s.auto_sprint_threshold && !menu)),
 +        (Button::RightStick, vr.right_stick),
 +    ] {
 +        state.set(button, down);
@@ -1113,7 +1412,7 @@ index 026382e953..b243c0162f 100644
 +    state
 +}
 diff --git a/crates/horizon-client/src/game/interface/pad_menu.rs b/crates/horizon-client/src/game/interface/pad_menu.rs
-index df497fd3ec..05af120c12 100644
+index df497fd..73ddd0a 100644
 --- a/crates/horizon-client/src/game/interface/pad_menu.rs
 +++ b/crates/horizon-client/src/game/interface/pad_menu.rs
 @@ -2100,7 +2100,8 @@ impl Game<'_> {
@@ -1150,7 +1449,7 @@ index df497fd3ec..05af120c12 100644
 +        horizon_vr::set_in_world(self.player.is_some() && self.title.is_none());
 +        let pad = horizon_vr::pad();
 +        let now = if open {
-+            pad.map_or([false; 2], |p| [p.triggers[1] > 0.5, p.right_bumper])
++            pad.map_or([false; 2], |p| [p.triggers[1] > 0.5 || horizon_vr::gui_touch(), p.right_bumper])
 +        } else {
 +            [false; 2]
 +        };
@@ -1196,10 +1495,10 @@ index df497fd3ec..05af120c12 100644
 +    }
 +}
 diff --git a/crates/horizon-client/src/game/interface/perspective.rs b/crates/horizon-client/src/game/interface/perspective.rs
-index 599c153798..87ffcc9c11 100644
+index 082e196..1aac337 100644
 --- a/crates/horizon-client/src/game/interface/perspective.rs
 +++ b/crates/horizon-client/src/game/interface/perspective.rs
-@@ -1297,6 +1297,11 @@ impl Game<'_> {
+@@ -1319,6 +1319,11 @@ impl Game<'_> {
                  .and_then(|s| self.items().get(&s.item))
                  .and_then(|info| info.arm_pose)
          });
@@ -1212,7 +1511,7 @@ index 599c153798..87ffcc9c11 100644
              return poses;
          }
 diff --git a/crates/horizon-client/src/game/interface/play_keys.rs b/crates/horizon-client/src/game/interface/play_keys.rs
-index a2fc208e18..a1f279c8b9 100644
+index a2fc208..a1f279c 100644
 --- a/crates/horizon-client/src/game/interface/play_keys.rs
 +++ b/crates/horizon-client/src/game/interface/play_keys.rs
 @@ -498,3 +498,23 @@ mod swap_hands_tests {
@@ -1240,7 +1539,7 @@ index a2fc208e18..a1f279c8b9 100644
 +    }
 +}
 diff --git a/crates/horizon-client/src/game/interface/player_hooks.rs b/crates/horizon-client/src/game/interface/player_hooks.rs
-index add95aec1c..6b7b443aef 100644
+index add95ae..6b7b443 100644
 --- a/crates/horizon-client/src/game/interface/player_hooks.rs
 +++ b/crates/horizon-client/src/game/interface/player_hooks.rs
 @@ -23,6 +23,12 @@ pub(crate) fn register() {
@@ -1257,10 +1556,10 @@ index add95aec1c..6b7b443aef 100644
  
  /// The models of the world a window shows: its own first, then the other players and mannequins.
 diff --git a/crates/horizon-client/src/game/interface/pointer_capture.rs b/crates/horizon-client/src/game/interface/pointer_capture.rs
-index a03f68ea43..94af479555 100644
+index 4c33a5f..ded995a 100644
 --- a/crates/horizon-client/src/game/interface/pointer_capture.rs
 +++ b/crates/horizon-client/src/game/interface/pointer_capture.rs
-@@ -99,6 +99,8 @@ impl Game<'_> {
+@@ -101,6 +101,8 @@ impl Game<'_> {
              && !self.options.no_pause
              && self.settings.file.bool("pauseOnLostFocus")
              && !self.pad_keeps_playing_unfocused()
@@ -1270,10 +1569,10 @@ index a03f68ea43..94af479555 100644
              && self.sign_edit.is_none()
              && self.server_packs.prompt.is_none()
 diff --git a/crates/horizon-client/src/game/interface/render_tick.rs b/crates/horizon-client/src/game/interface/render_tick.rs
-index 63b7564382..e46e4f1fa8 100644
+index 2a9e0fe..2f00031 100644
 --- a/crates/horizon-client/src/game/interface/render_tick.rs
 +++ b/crates/horizon-client/src/game/interface/render_tick.rs
-@@ -335,24 +335,74 @@ impl Game<'_> {
+@@ -335,24 +335,80 @@ impl Game<'_> {
              p.position.z,
          ];
          let mut effects = self.block_screen_effects(p, eye, partial, size, scale);
@@ -1283,12 +1582,18 @@ index 63b7564382..e46e4f1fa8 100644
 +        // camera overlays go on as quads, which the renderer lays over each eye.
 +        let vr = horizon_vr::poses().is_some() && !horizon_vr::screen_mode();
 +        if vr {
++            let vrs = super::vr_settings::vr_settings();
 +            let fx = &self.screen_fx;
 +            let portal = fx.o_portal + (fx.portal - fx.o_portal) * partial;
-+            let pumpkin = self.armor[0].as_ref().is_some_and(|s| s.item.ends_with("carved_pumpkin"));
++            let pumpkin = vrs.render_pumpkin_overlay
++                && self.armor[0].as_ref().is_some_and(|s| s.item.ends_with("carved_pumpkin"));
 +            let frozen = p.percent_frozen();
-+            let low = p.health.health() <= 6.0 && !p.health.dead_or_dying();
-+            let nausea = self.nausea_blend(partial) * self.screen_effect_scale();
++            let low = vrs.render_low_health_overlay && p.health.health() <= 6.0 && !p.health.dead_or_dying();
++            let nausea = if vrs.render_nausea_overlay {
++                self.nausea_blend(partial) * self.screen_effect_scale()
++            } else {
++                0.0
++            };
 +            let border = if self.vignette_shown() {
 +                self.border.warning_strength(p.position.x, p.position.z)
 +            } else {
@@ -1304,13 +1609,13 @@ index 63b7564382..e46e4f1fa8 100644
 +            };
 +            let tint = if pumpkin {
 +                Some(([0.05, 0.03, 0.0, 0.9], 1.0))
-+            } else if portal > 0.0 {
++            } else if vrs.render_portal_overlay && portal > 0.0 {
 +                Some(([0.45, 0.1, 0.75, 0.6 * portal], 0.0))
 +            } else if frozen > 0.0 {
 +                Some(([0.75, 0.9, 1.0, 0.55 * frozen], 1.0))
-+            } else if effects.on_fire {
++            } else if vrs.render_fire_overlay && effects.on_fire {
 +                Some(([1.0, 0.45, 0.05, 0.35], 1.0))
-+            } else if effects.water {
++            } else if vrs.render_water_overlay && effects.water {
 +                Some(([0.05, 0.2, 0.55, 0.35], 0.6))
 +            } else if nausea > 0.0 {
 +                Some(([0.35, 0.55, 0.2, nausea * (0.25 + 0.15 * pulse)], 0.0))
@@ -1352,7 +1657,7 @@ index 63b7564382..e46e4f1fa8 100644
              game_time_delta: 0.0,
              equipment: [
                  (self.inventory[self.selected].as_ref(), "mainhand"),
-@@ -369,6 +419,10 @@ impl Game<'_> {
+@@ -369,6 +425,10 @@ impl Game<'_> {
                      return None;
                  }
                  let overlay = e.camera_overlay?;
@@ -1363,7 +1668,7 @@ index 63b7564382..e46e4f1fa8 100644
                  Some(
                      overlay
                          .strip_prefix("minecraft:")
-@@ -376,11 +430,11 @@ impl Game<'_> {
+@@ -376,11 +436,11 @@ impl Game<'_> {
                  )
              })
              .collect(),
@@ -1379,7 +1684,7 @@ index 63b7564382..e46e4f1fa8 100644
              screen_effect_scale: self.screen_effect_scale(),
          };
          let mut scope = self.scope_scale;
-@@ -393,7 +447,7 @@ impl Game<'_> {
+@@ -393,7 +453,7 @@ impl Game<'_> {
              partial,
              block_overlay,
              water,
@@ -1389,10 +1694,10 @@ index 63b7564382..e46e4f1fa8 100644
              gui_overlays: &gui_overlays,
              custom: [&custom[0], &custom[1], &custom[2]],
 diff --git a/crates/horizon-client/src/game/interface/scoreboard/mod.rs b/crates/horizon-client/src/game/interface/scoreboard/mod.rs
-index 66cc655843..8885780bea 100644
+index a4d1004..8483d3a 100644
 --- a/crates/horizon-client/src/game/interface/scoreboard/mod.rs
 +++ b/crates/horizon-client/src/game/interface/scoreboard/mod.rs
-@@ -936,7 +936,8 @@ impl Game<'_> {
+@@ -976,7 +976,8 @@ impl Game<'_> {
          // Player heads and the player list both draw from the same skin
          // slots: a new frame, with what the last one drew.
          self.flush_skin_slots();
@@ -1402,7 +1707,7 @@ index 66cc655843..8885780bea 100644
          let count = self.remote.as_ref().map_or_else(
              || {
                  1 + self
-@@ -947,11 +948,13 @@ impl Game<'_> {
+@@ -987,11 +988,13 @@ impl Game<'_> {
              |r| r.listed_player_count(),
          );
          let has_objective = self.score.board.display_objective(sb::SLOT_LIST).is_some();
@@ -1418,7 +1723,7 @@ index 66cc655843..8885780bea 100644
              has_objective,
          );
 diff --git a/crates/horizon-client/src/game/interface/screen_backgrounds.rs b/crates/horizon-client/src/game/interface/screen_backgrounds.rs
-index e008b27a55..9a7f300d5e 100644
+index 059e19b..a49da70 100644
 --- a/crates/horizon-client/src/game/interface/screen_backgrounds.rs
 +++ b/crates/horizon-client/src/game/interface/screen_backgrounds.rs
 @@ -109,6 +109,10 @@ impl Game<'_> {
@@ -1433,7 +1738,7 @@ index e008b27a55..9a7f300d5e 100644
          self.native_screen_transparent_background(screen, batch, &mut canceled);
          if !canceled {
 diff --git a/crates/horizon-client/src/game/items/clip_ray.rs b/crates/horizon-client/src/game/items/clip_ray.rs
-index c7f565d0d0..2cd9b06b6c 100644
+index c7f565d..2cd9b06 100644
 --- a/crates/horizon-client/src/game/items/clip_ray.rs
 +++ b/crates/horizon-client/src/game/items/clip_ray.rs
 @@ -3,7 +3,7 @@ use super::*;
@@ -1445,11 +1750,53 @@ index c7f565d0d0..2cd9b06b6c 100644
          &self,
          origin: [f64; 3],
          dir: [f64; 3],
+diff --git a/crates/horizon-client/src/game/items/crossbow.rs b/crates/horizon-client/src/game/items/crossbow.rs
+index d5fd856..b007769 100644
+--- a/crates/horizon-client/src/game/items/crossbow.rs
++++ b/crates/horizon-client/src/game/items/crossbow.rs
+@@ -331,9 +331,14 @@ impl Game<'_> {
+             3.15
+         };
+         // ProjectileWeaponItem.shoot: angles fanned 10 degrees apart.
++        let vr_origin = self.vr_prepare_projectile(false);
++        let (shot_pos, shot_yaw, shot_pitch) = vr_origin.map_or(
++            ([eye[0], eye[1] - 0.1, eye[2]], self.yaw, self.pitch),
++            |(p, y, pt, _)| (p, y, pt),
++        );
+         let spread = if count > 1 { 10.0 } else { 0.0 };
+-        let view = glam::DVec3::from_array(view_vector(self.yaw, self.pitch));
+-        let up = glam::DVec3::from_array(view_vector(self.yaw, self.pitch - 90.0));
++        let view = glam::DVec3::from_array(view_vector(shot_yaw, shot_pitch));
++        let up = glam::DVec3::from_array(view_vector(shot_yaw, shot_pitch - 90.0));
+         for (index, ammo) in charged.iter().enumerate() {
+             let angle = if count > 1 {
+                 -spread + 2.0 * spread * index as f64 / (count - 1) as f64
+@@ -351,7 +356,10 @@ impl Game<'_> {
+             // eyes, spread by its own random; three durability.
+             let rocket = &*ammo.item == FIREWORK_ROCKET;
+             if rocket {
+-                let at = Vec3::new(eye[0], eye[1] - f64::from(0.15f32), eye[2]);
++                let at = vr_origin.map_or(
++                    Vec3::new(eye[0], eye[1] - f64::from(0.15f32), eye[2]),
++                    |(p, ..)| Vec3::new(p[0], p[1], p[2]),
++                );
+                 // Its first tick posts the shot (Projectile.tick).
+                 self.launch_angled_rocket(at, ammo, Some(Who::Player), |own| {
+                     let mut shot = Projectile::new(ProjectileKind::Snowball, at, None);
+@@ -371,7 +379,7 @@ impl Game<'_> {
+                 };
+                 let mut arrow = Projectile::new(
+                     kind,
+-                    Vec3::new(eye[0], eye[1] - 0.1, eye[2]),
++                    Vec3::new(shot_pos[0], shot_pos[1], shot_pos[2]),
+                     Some(Who::Player),
+                 );
+                 if let Some(a) = arrow.arrow.as_mut() {
 diff --git a/crates/horizon-client/src/game/items/hand.rs b/crates/horizon-client/src/game/items/hand.rs
-index c90f85fd94..2684f8b794 100644
+index 596b4f1..c1b5485 100644
 --- a/crates/horizon-client/src/game/items/hand.rs
 +++ b/crates/horizon-client/src/game/items/hand.rs
-@@ -1305,3 +1305,103 @@ mod tests {
+@@ -1314,3 +1314,103 @@ mod tests {
          }
      }
  }
@@ -1553,8 +1900,158 @@ index c90f85fd94..2684f8b794 100644
 +        r
 +    }
 +}
+diff --git a/crates/horizon-client/src/game/items/item_entities.rs b/crates/horizon-client/src/game/items/item_entities.rs
+index 603dd94..14e2248 100644
+--- a/crates/horizon-client/src/game/items/item_entities.rs
++++ b/crates/horizon-client/src/game/items/item_entities.rs
+@@ -899,21 +899,31 @@ impl Game<'_> {
+         // `Player.drop` draws the spread from the player's own random. A throw with no player
+         // in place (a `/give` remainder whose target this game doesn't hold) keeps a fresh one
+         // rather than losing the item.
+-        let v = match self.player.as_mut() {
+-            Some(player) => horizon_client::entities::drop_motion(
+-                &mut player.random,
+-                self.yaw,
+-                self.pitch,
+-                randomly,
+-            ),
+-            None => horizon_client::entities::drop_motion(
+-                &mut random_source::entity(),
+-                self.yaw,
+-                self.pitch,
+-                randomly,
+-            ),
++        let vr_throw = if thrown_from_hand && !randomly {
++            self.vr_hand_throw_impulse(0, 0.8)
++        } else {
++            None
++        };
++        let (at, v) = match vr_throw {
++            Some((at_vr, v_vr)) => (at_vr, v_vr),
++            None => {
++                let v = match self.player.as_mut() {
++                    Some(player) => horizon_client::entities::drop_motion(
++                        &mut player.random,
++                        self.yaw,
++                        self.pitch,
++                        randomly,
++                    ),
++                    None => horizon_client::entities::drop_motion(
++                        &mut random_source::entity(),
++                        self.yaw,
++                        self.pitch,
++                        randomly,
++                    ),
++                };
++                ([eye[0], eye[1] - f64::from(0.3f32), eye[2]], v)
++            }
+         };
+-        let at = [eye[0], eye[1] - f64::from(0.3f32), eye[2]];
+         let uuid = thrown_from_hand.then(|| self.acting_player_uuid());
+         // Only `drop(.., false)` tosses ask `item_toss`: a death's scatter (`randomly`) does not.
+         let id = if randomly {
+@@ -924,7 +934,13 @@ impl Game<'_> {
+         };
+         let item = self.dropped.iter_mut().rev().find(|d| d.id == id)?;
+         item.thrower = uuid;
+-        Some(item.id)
++        let registered_id = item.id;
++        if vr_throw.is_some() {
++            item.pickup_delay = 10;
++            let stack_copy = item.stack.clone();
++            self.vr_register_thrown_item(registered_id, 0, &stack_copy);
++        }
++        Some(registered_id)
+     }
+ 
+     /// `FurnaceResultSlot.checkTakeAchievements`: the player took from the output of the
+diff --git a/crates/horizon-client/src/game/items/potions.rs b/crates/horizon-client/src/game/items/potions.rs
+index 9179650..67a71db 100644
+--- a/crates/horizon-client/src/game/items/potions.rs
++++ b/crates/horizon-client/src/game/items/potions.rs
+@@ -778,10 +778,16 @@ impl Game<'_> {
+                     count: 1,
+                     ..stack.clone()
+                 };
+-                let mut shot =
+-                    thrown_projectile(one, Vec3::new(eye[0], eye[1] - 0.1, eye[2]), true);
++                let (spawn_pos, shot_yaw, shot_pitch) = self
++                    .vr_prepare_projectile(false)
++                    .map_or(([eye[0], eye[1] - 0.1, eye[2]], self.yaw, self.pitch), |(p, y, pt, _)| (p, y, pt));
++                let mut shot = thrown_projectile(
++                    one,
++                    Vec3::new(spawn_pos[0], spawn_pos[1], spawn_pos[2]),
++                    true,
++                );
+                 shot.shoot_from_rotation(
+-                    self.pitch, self.yaw, -20.0, power, 1.0, velocity, on_ground,
++                    shot_pitch, shot_yaw, -20.0, power, 1.0, velocity, on_ground,
+                 );
+                 shot.guest = self.lan_acting;
+                 self.add_projectile(shot);
+diff --git a/crates/horizon-client/src/game/items/trident.rs b/crates/horizon-client/src/game/items/trident.rs
+index aefe916..e10f1b7 100644
+--- a/crates/horizon-client/src/game/items/trident.rs
++++ b/crates/horizon-client/src/game/items/trident.rs
+@@ -241,6 +241,7 @@ impl Game<'_> {
+         }
+         // The server throws the trident.
+         if self.remote.is_some() {
++            let _ = self.vr_prepare_projectile(false);
+             return;
+         }
+         // hurtWithoutBreaking (Unbreaking applies), then the thrown copy.
+@@ -249,7 +250,10 @@ impl Game<'_> {
+         if !self.creative {
+             *self.held_mut() = None;
+         }
+-        let start = Vec3::new(eye[0], eye[1] - 0.1, eye[2]);
++        let (spawn_pos, shot_yaw, shot_pitch) = self
++            .vr_prepare_projectile(false)
++            .map_or(([eye[0], eye[1] - 0.1, eye[2]], self.yaw, self.pitch), |(p, y, pt, _)| (p, y, pt));
++        let start = Vec3::new(spawn_pos[0], spawn_pos[1], spawn_pos[2]);
+         let mut projectile = horizon_client::projectiles::Projectile::new(
+             horizon_client::projectiles::ProjectileKind::Snowball,
+             start,
+@@ -258,7 +262,7 @@ impl Game<'_> {
+         let (v, on_ground) = self.player.as_ref().map_or((Vec3::ZERO, true), |p| {
+             (self.known_player_movement(), p.ground.on_ground)
+         });
+-        projectile.shoot_from_rotation(self.pitch, self.yaw, 0.0, 2.5, 1.0, v, on_ground);
++        projectile.shoot_from_rotation(shot_pitch, shot_yaw, 0.0, 2.5, 1.0, v, on_ground);
+         let id = self.take_entity_id();
+         if let Some(uuid) = projectile.uuid {
+             self.persist.uuids.insert(id, uuid);
+diff --git a/crates/horizon-client/src/game/items/use_hand.rs b/crates/horizon-client/src/game/items/use_hand.rs
+index 4533b28..e911096 100644
+--- a/crates/horizon-client/src/game/items/use_hand.rs
++++ b/crates/horizon-client/src/game/items/use_hand.rs
+@@ -831,8 +831,11 @@ impl Game<'_> {
+         let Some(eye) = self.eye_position() else {
+             return;
+         };
++        let (spawn_pos, shot_yaw, shot_pitch) = self
++            .vr_prepare_projectile(true)
++            .map_or(([eye[0], eye[1] - 0.1, eye[2]], self.yaw, self.pitch), |(p, y, pt, _)| (p, y, pt));
+         // BowItem.shootProjectile: shootFromRotation(power * 3, inaccuracy 1).
+-        let p = Vec3::new(eye[0], eye[1] - 0.1, eye[2]);
++        let p = Vec3::new(spawn_pos[0], spawn_pos[1], spawn_pos[2]);
+         let ammo = ammo.stack;
+         let (power_bonus, infinity) = self.bow_enchantments(&ammo.item);
+         let effect = dispenser::tipped_effect(&ammo).or_else(|| {
+@@ -887,8 +890,8 @@ impl Game<'_> {
+ 
+             // BowItem.shootProjectile: shootFromRotation(power * 3, inaccuracy 1).
+             arrow.shoot_from_rotation(
+-                self.pitch,
+-                self.yaw + angle,
++                shot_pitch,
++                shot_yaw + angle,
+                 0.0,
+                 power * 3.0,
+                 1.0,
 diff --git a/crates/horizon-client/src/game/items/using_item.rs b/crates/horizon-client/src/game/items/using_item.rs
-index 36230608f5..d06f378256 100644
+index 3623060..d06f378 100644
 --- a/crates/horizon-client/src/game/items/using_item.rs
 +++ b/crates/horizon-client/src/game/items/using_item.rs
 @@ -111,7 +111,9 @@ impl Game<'_> {
@@ -1568,11 +2065,41 @@ index 36230608f5..d06f378256 100644
              self.using = None;
              self.release_used_item(&stack, ticks, hand_changed);
              return;
+diff --git a/crates/horizon-client/src/game/mobs/creatures/mod.rs b/crates/horizon-client/src/game/mobs/creatures/mod.rs
+index d1b09df..4b81222 100644
+--- a/crates/horizon-client/src/game/mobs/creatures/mod.rs
++++ b/crates/horizon-client/src/game/mobs/creatures/mod.rs
+@@ -5549,7 +5549,8 @@ impl Game<'_> {
+                         .find(|m| m.id == id)
+                         .map(|m| m.kind.id.clone()),
+                 };
+-                let amount = self.shot_damage(&mut arrow, victim.as_deref(), who);
++                let mut amount = self.shot_damage(&mut arrow, victim.as_deref(), who);
++                amount *= self.vr_headshot_multiplier(who, p.owner, p.position);
+                 let player_fire = self.player.as_ref().map(|pl| pl.fire_ticks);
+                 // AbstractArrow.onHitEntity saves the fire, ignites, then puts
+                 // it back when hurtOrSimulate fails and the target still takes
+@@ -7429,10 +7430,13 @@ impl Game<'_> {
+         // Projectile.shootFromRotation adds getKnownMovement: what the thrower last moved.
+         let on_ground = p.ground.on_ground;
+         let velocity = self.known_player_movement();
+-        let start = Vec3::new(eye[0], eye[1] - 0.1, eye[2]);
++        let (spawn_pos, shot_yaw, shot_pitch) = self
++            .vr_prepare_projectile(false)
++            .map_or(([eye[0], eye[1] - 0.1, eye[2]], self.yaw, self.pitch), |(p, y, pt, _)| (p, y, pt));
++        let start = Vec3::new(spawn_pos[0], spawn_pos[1], spawn_pos[2]);
+         let mut proj = Projectile::new(kind.clone(), start, Some(Who::Player));
+         proj.set_egg_item(stack);
+-        proj.shoot_from_rotation(self.pitch, self.yaw, 0.0, 1.5, 1.0, velocity, on_ground);
++        proj.shoot_from_rotation(shot_pitch, shot_yaw, 0.0, 1.5, 1.0, velocity, on_ground);
+         self.spawn_projectile(proj, stack);
+         // SnowballItem.use / EggItem.use / EnderpearlItem.use: awardStat(ITEM_USED).
+         self.award_stat("used", item, 1);
 diff --git a/crates/horizon-client/src/game/network/lan_actions/guest_body.rs b/crates/horizon-client/src/game/network/lan_actions/guest_body.rs
-index 7436af2908..1951aec398 100644
+index a9e272e..5819f13 100644
 --- a/crates/horizon-client/src/game/network/lan_actions/guest_body.rs
 +++ b/crates/horizon-client/src/game/network/lan_actions/guest_body.rs
-@@ -131,6 +131,9 @@ impl Game<'_> {
+@@ -134,6 +134,9 @@ impl Game<'_> {
          let at = g.position;
          let dimensions = g.dimensions();
          let (sneaking, sleeping) = (g.sneaking, g.sleeping);
@@ -1582,7 +2109,7 @@ index 7436af2908..1951aec398 100644
          let riding = g.vehicle.is_some();
          if g.motion
              .as_ref()
-@@ -242,6 +245,7 @@ impl Game<'_> {
+@@ -245,6 +248,7 @@ impl Game<'_> {
              // Entity.applyEffectsFromBlocks along those moves: magma, cactus,
              // lit campfires and grown sweet berry bushes hurt (arismoko/horizon#1305).
              w.player.shift_key_down = sneaking;
@@ -1590,22 +2117,22 @@ index 7436af2908..1951aec398 100644
              let _ = w.player.set_sleeping(sleeping);
              w.player.leather_boots = leather_boots;
              w.player.freeze_immune = freeze_immune;
-diff --git a/crates/horizon-client/src/game/network/remote/mod.rs b/crates/horizon-client/src/game/network/remote/mod.rs
-index ad5027ddf4..f2ca821008 100644
---- a/crates/horizon-client/src/game/network/remote/mod.rs
-+++ b/crates/horizon-client/src/game/network/remote/mod.rs
-@@ -3244,6 +3244,10 @@ impl Game<'_> {
+diff --git a/crates/horizon-client/src/game/network/remote/apply_packet.rs b/crates/horizon-client/src/game/network/remote/apply_packet.rs
+index bcaa9ba..5fa1a76 100644
+--- a/crates/horizon-client/src/game/network/remote/apply_packet.rs
++++ b/crates/horizon-client/src/game/network/remote/apply_packet.rs
+@@ -9,6 +9,10 @@ impl Game<'_> {
+             // ClientCommonPacketListenerImpl.handlePing runs on the game
              // thread, after all preceding packets (especially teleports).
              C::Ping(p) => self.send(S::Pong(p)),
-             // The server's next generation of mod registries: all of it or the connection.
 +            // Vivecraft's server plugin (`ClientNetworking.handlePacket`).
-+            C::CustomPayload(p) if p.channel == super::vr_net::CHANNEL => {
++            C::CustomPayload(p) if p.channel == crate::game::vr_net::CHANNEL => {
 +                self.vr_net_receive(&p.data);
 +            }
+             // The server's next generation of mod registries: all of it or the connection.
              C::CustomPayload(p) if p.channel == horizon_client::datapack_net::CHANNEL => {
                  horizon_client::datapack_net::accept_chunk(&p.data)?;
-             }
-@@ -3322,6 +3326,8 @@ impl Game<'_> {
+@@ -88,6 +92,8 @@ impl Game<'_> {
                  if let Some(player) = self.player.as_mut() {
                      player.entity_id = p.player_id;
                  }
@@ -1614,7 +2141,7 @@ index ad5027ddf4..f2ca821008 100644
                  if let Some(r) = self.remote.as_mut() {
                      r.carried.set(Some(0));
                      // handleLogin makes a new ClientLevel: its predictions count from 0.
-@@ -3367,6 +3373,8 @@ impl Game<'_> {
+@@ -133,6 +139,8 @@ impl Game<'_> {
                  }
              }
              C::Respawn(p) => {
@@ -1623,7 +2150,24 @@ index ad5027ddf4..f2ca821008 100644
                  // The new LocalPlayer copies reduced debug info through its setter.
                  self.debug_entries.invalidate();
                  let old_player = self.remote.as_ref().map(|r| (r.entity_id, r.profile));
-@@ -6275,7 +6283,12 @@ impl Game<'_> {
+diff --git a/crates/horizon-client/src/game/network/remote/mod.rs b/crates/horizon-client/src/game/network/remote/mod.rs
+index ce29d9b..70edd03 100644
+--- a/crates/horizon-client/src/game/network/remote/mod.rs
++++ b/crates/horizon-client/src/game/network/remote/mod.rs
+@@ -1609,7 +1609,7 @@ impl Game<'_> {
+     pub(super) fn remote_player_name(&self, id: u32) -> Option<&str> {
+         self.remote_player_name_body(id)
+     }
+-    pub(super) fn remote_player_uuid(&self, id: u32) -> Option<u128> {
++    pub(in crate::game) fn remote_player_uuid(&self, id: u32) -> Option<u128> {
+         self.remote_player_uuid_body(id)
+     }
+     pub(super) fn remote_player_names(&self) -> Vec<(u32, String)> {
+diff --git a/crates/horizon-client/src/game/network/remote/tick.rs b/crates/horizon-client/src/game/network/remote/tick.rs
+index 0e524f3..2fa7320 100644
+--- a/crates/horizon-client/src/game/network/remote/tick.rs
++++ b/crates/horizon-client/src/game/network/remote/tick.rs
+@@ -178,7 +178,12 @@ impl Game<'_> {
          if let Some(player) = player {
              self.native_player_tick_pre(mod_api::__private::PlayerTickPreCall { player });
          }
@@ -1636,7 +2180,7 @@ index ad5027ddf4..f2ca821008 100644
          entity_section_steps::player_after(self, player_from);
          // `EntityEvent.Size` for the pose the tick set.
          self.native_local_player_size();
-@@ -6333,6 +6346,12 @@ impl Game<'_> {
+@@ -237,6 +242,12 @@ impl Game<'_> {
          if self.integrated.is_none() && self.server_address().is_some() {
              keys.analog = None;
          }
@@ -1649,7 +2193,11 @@ index ad5027ddf4..f2ca821008 100644
          let keys = self.mod_movement_keys(keys);
          let input = u8::from(keys.forward)
              | u8::from(keys.backward) << 1
-@@ -6781,6 +6800,7 @@ impl Game<'_> {
+diff --git a/crates/horizon-client/src/game/network/remote/tick_entities.rs b/crates/horizon-client/src/game/network/remote/tick_entities.rs
+index 3e30f92..d87c05f 100644
+--- a/crates/horizon-client/src/game/network/remote/tick_entities.rs
++++ b/crates/horizon-client/src/game/network/remote/tick_entities.rs
+@@ -184,6 +184,7 @@ impl Game<'_> {
                      .map_or(25, |stack| Self::charge_ticks(stack).max(1)) as i32
              });
              self.mobs[i].extra.held_arm_pose = poses;
@@ -1657,17 +2205,8 @@ index ad5027ddf4..f2ca821008 100644
              if let Some(duration) = charge_duration {
                  self.mobs[i].extra.ints[5] = duration;
              }
-@@ -9853,7 +9873,7 @@ impl Game<'_> {
-         let r = self.remote.as_ref()?;
-         r.level_player_name(id as i32, &r.player_uuid(id)?)
-     }
--    pub(super) fn remote_player_uuid(&self, id: u32) -> Option<u128> {
-+    pub(in crate::game) fn remote_player_uuid(&self, id: u32) -> Option<u128> {
-         let remote = self.remote.as_ref()?;
-         if self.player_model.as_ref().is_some_and(|m| m.id == id) {
-             Some(remote.profile)
 diff --git a/crates/horizon-client/src/game/network/remote_chat.rs b/crates/horizon-client/src/game/network/remote_chat.rs
-index 9cb4b6becb..4baeebb25a 100644
+index 9cb4b6b..4baeebb 100644
 --- a/crates/horizon-client/src/game/network/remote_chat.rs
 +++ b/crates/horizon-client/src/game/network/remote_chat.rs
 @@ -279,7 +279,7 @@ impl Game<'_> {
@@ -1680,10 +2219,10 @@ index 9cb4b6becb..4baeebb25a 100644
              return;
          };
 diff --git a/crates/horizon-client/src/mobs.rs b/crates/horizon-client/src/mobs.rs
-index 8db877a1f1..e9034d42b7 100644
+index b464a7c..052063a 100644
 --- a/crates/horizon-client/src/mobs.rs
 +++ b/crates/horizon-client/src/mobs.rs
-@@ -1109,6 +1109,9 @@ pub struct Extra {
+@@ -1114,6 +1114,9 @@ pub struct Extra {
      /// The `arm_pose` the items in the main and off hand declare, if any: the pose
      /// a humanoid model's arm takes holding it, in place of vanilla's.
      pub held_arm_pose: [Option<horizon_core::arm_pose::ArmPose>; 2],
@@ -1694,7 +2233,7 @@ index 8db877a1f1..e9034d42b7 100644
      pub fall_fly_ticks: i32,
      /// `Entity.deltaMovementOnPreviousTick`: the velocity before this tick's
 diff --git a/crates/horizon-client/src/mobs/anim.rs b/crates/horizon-client/src/mobs/anim.rs
-index 1b0eb1871b..fd1349fa91 100644
+index 1b0eb18..fd1349f 100644
 --- a/crates/horizon-client/src/mobs/anim.rs
 +++ b/crates/horizon-client/src/mobs/anim.rs
 @@ -1028,6 +1028,15 @@ fn vanilla_setup(
@@ -1714,7 +2253,7 @@ index 1b0eb1871b..fd1349fa91 100644
                  player_model_visibility(p, m.extra.hidden_model_parts, m.extra.spectator);
              }
 diff --git a/crates/horizon-client/src/motion.rs b/crates/horizon-client/src/motion.rs
-index 9cf8a87af7..0b29b2a5e3 100644
+index 3f05d49..47695d6 100644
 --- a/crates/horizon-client/src/motion.rs
 +++ b/crates/horizon-client/src/motion.rs
 @@ -521,6 +521,9 @@ pub struct PlayerMotion {
@@ -1728,7 +2267,7 @@ index 9cf8a87af7..0b29b2a5e3 100644
      pub freeze_immune: bool,
      /// A worn enchantment's `damage_immunity` to `#burn_from_stepping` (frost walker).
 diff --git a/crates/horizon-client/src/motion/player_init.rs b/crates/horizon-client/src/motion/player_init.rs
-index b730f2ea35..99f8e97c66 100644
+index b730f2e..99f8e97 100644
 --- a/crates/horizon-client/src/motion/player_init.rs
 +++ b/crates/horizon-client/src/motion/player_init.rs
 @@ -98,6 +98,7 @@ impl PlayerMotion {
@@ -1740,7 +2279,7 @@ index b730f2ea35..99f8e97c66 100644
              old_position: position,
              server_copy: false,
 diff --git a/crates/horizon-client/src/osk.rs b/crates/horizon-client/src/osk.rs
-index 4af9c1a54c..d3c7e1ab69 100644
+index 4af9c1a..d3c7e1a 100644
 --- a/crates/horizon-client/src/osk.rs
 +++ b/crates/horizon-client/src/osk.rs
 @@ -235,6 +235,11 @@ fn wrap_hints(
@@ -1835,10 +2374,10 @@ index 4af9c1a54c..d3c7e1ab69 100644
      fn rows_are_ten_units_wide() {
          for rows in [&LETTERS, &SYMBOLS] {
 diff --git a/crates/horizon-client/src/pose.rs b/crates/horizon-client/src/pose.rs
-index 8a50ce7d56..d6a9eff2bb 100644
+index 1f48950..7916b73 100644
 --- a/crates/horizon-client/src/pose.rs
 +++ b/crates/horizon-client/src/pose.rs
-@@ -248,6 +248,8 @@ impl MotionWorld<'_, '_, '_> {
+@@ -261,6 +261,8 @@ impl MotionWorld<'_, '_, '_> {
              Pose::FallFlying
          } else if self.player.auto_spin_attack_ticks > 0 {
              Pose::SpinAttack

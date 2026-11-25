@@ -178,6 +178,10 @@ pub(super) struct VrPlayer {
     pub cross_vec: Option<[f64; 3]>,
     /// The player's position before the tick's physics, for the room to follow.
     before: Option<[f64; 3]>,
+    /// Last render frame timestamp for per-frame smooth turning.
+    last_smooth_turn: Option<std::time::Instant>,
+    /// Auto-calibrated seated HMD eye height baseline.
+    seated_eye_height: Option<f32>,
     /// Trackers' state.
     pub trackers: super::vr_trackers::Trackers,
 }
@@ -203,6 +207,8 @@ impl VrPlayer {
             pre: None,
             cross_vec: None,
             before: None,
+            last_smooth_turn: None,
+            seated_eye_height: None,
             trackers: Default::default(),
         }
     }
@@ -236,11 +242,8 @@ impl VrPlayer {
     fn snap_turn(&mut self, axis: f32) {
         let increment = settings::world_rotation_increment();
         if increment == 0.0 {
-            // Smooth rotation: `worldRotationXSensitivity` 1, 10 degrees at a full push.
-            // shortcut: per tick, where Vivecraft turns per frame.
-            if axis.abs() > 0.1 {
-                self.world_rotation = (self.world_rotation - 10.0 * axis) % 360.0;
-            }
+            // Smooth rotation runs per render frame in `Game::vr_render_tick`.
+            self.snapped = false;
             return;
         }
         if !self.snapped && axis.abs() > 0.5 {
@@ -281,6 +284,169 @@ impl Game<'_> {
         ))
     }
 
+    /// Per-render-frame smooth rotation when `rotation_increment == 0.0` (`MCVR` per-frame turning).
+    pub(super) fn vr_render_tick(&mut self) {
+        let s = super::vr_settings::vr_settings();
+        if !self.vr_running() || s.rotation_increment != 0.0 {
+            if let Some(vr) = vr_player().as_mut() {
+                vr.last_smooth_turn = None;
+            }
+            return;
+        }
+        let Some(poses) = horizon_vr::poses() else {
+            return;
+        };
+        let now = std::time::Instant::now();
+        let mut guard = vr_player();
+        let Some(vr) = guard.as_mut().filter(|v| v.placed) else {
+            return;
+        };
+        let Some(last) = vr.last_smooth_turn.replace(now) else {
+            return;
+        };
+        let dt = now.duration_since(last).as_secs_f32().min(0.1);
+        let axis = poses.turn;
+        if axis.abs() <= 0.1 || horizon_vr::gui_open() {
+            return;
+        }
+        let delta = -180.0 * s.smooth_turn_speed * axis * dt;
+        let pivot = vr.data(poses).head_pivot();
+        vr.rotate_origin_around(-delta, pivot);
+        vr.world_rotation = (vr.world_rotation + delta) % 360.0;
+        horizon_vr::update_room_rotation(vr.room());
+    }
+
+    /// VR projectile spawn origin and aim (`yaw`, `pitch` in Horizon degrees, plus unit `dir`).
+    /// `is_bow`: uses roomscale bow aim and bow-hand offset when drawing.
+    pub(super) fn vr_projectile_origin(&self, is_bow: bool) -> Option<([f64; 3], f32, f32, Vec3)> {
+        if !self.vr_running() || self.lan_acting.is_some() {
+            return None;
+        }
+        let poses = horizon_vr::poses()?;
+        let guard = vr_player();
+        let vr = guard.as_ref().filter(|v| v.placed)?;
+        let data = vr.data(poses);
+        if is_bow
+            && (vr.trackers.bow.drawing || vr.trackers.bow.was_drawing)
+            && let Some(aim) = vr.trackers.bow.aim
+        {
+            let dir = aim.normalize_or_zero();
+            if dir.length_squared() > 1e-6 {
+                let bow_pos = data.controller_pos(1);
+                let start = [
+                    bow_pos[0] + f64::from(dir.x * 0.15 * data.room.scale),
+                    bow_pos[1] + f64::from(dir.y * 0.15 * data.room.scale),
+                    bow_pos[2] + f64::from(dir.z * 0.15 * data.room.scale),
+                ];
+                return Some((start, yaw_of(dir), -pitch_of(dir), dir));
+            }
+        }
+        let dir = data.controller_dir(0).normalize_or_zero();
+        if dir.length_squared() <= 1e-6 {
+            return None;
+        }
+        Some((data.controller_pos(0), yaw_of(dir), -pitch_of(dir), dir))
+    }
+
+    /// Computes VR projectile spawn & aim and notifies remote Vivecraft servers via AimFix packets.
+    pub(super) fn vr_prepare_projectile(&self, is_bow: bool) -> Option<([f64; 3], f32, f32, Vec3)> {
+        let out = self.vr_projectile_origin(is_bow)?;
+        self.vr_net_aim_override(Some(out.0), Some(out.3));
+        self.vr_net_aim_override_reset(1);
+        Some(out)
+    }
+
+    /// Vivecraft bow headshot multiplier (3x roomscale, 2x seated) when an arrow owned by
+    /// the local player hits the head region of a biped/humanoid mob in VR.
+    pub(super) fn vr_headshot_multiplier(
+        &mut self,
+        who: horizon_client::mobs::Who,
+        owner: Option<horizon_client::mobs::Who>,
+        hit_pos: WVec3,
+    ) -> f32 {
+        let s = super::vr_settings::vr_settings();
+        if !self.vr_running() || !s.bow_headshots || owner != Some(horizon_client::mobs::Who::Player) {
+            return 1.0;
+        }
+        let horizon_client::mobs::Who::Mob(id) = who else {
+            return 1.0;
+        };
+        let Some(m) = self.mobs.iter().find(|m| m.id == id) else {
+            return 1.0;
+        };
+        let kind = m.kind.id.strip_prefix("minecraft:").unwrap_or(&m.kind.id);
+        let biped = matches!(
+            kind,
+            "zombie"
+                | "zombie_villager"
+                | "husk"
+                | "drowned"
+                | "skeleton"
+                | "stray"
+                | "bogged"
+                | "wither_skeleton"
+                | "creeper"
+                | "villager"
+                | "wandering_trader"
+                | "witch"
+                | "pillager"
+                | "vindicator"
+                | "evoker"
+                | "illusioner"
+                | "piglin"
+                | "piglin_brute"
+                | "zombified_piglin"
+                | "enderman"
+                | "player"
+        );
+        if !biped {
+            return 1.0;
+        }
+        let b = m.bounds();
+        let height = b.max(Axis::Y) - b.min(Axis::Y);
+        if height <= 0.2 || hit_pos.y < b.max(Axis::Y) - height * 0.28 {
+            return 1.0;
+        }
+        self.audio.play(
+            "minecraft:entity.arrow.hit_player",
+            Some([hit_pos.x, hit_pos.y, hit_pos.z]),
+            0.7,
+            1.5,
+        );
+        if s.seated { 2.0 } else { 3.0 }
+    }
+
+    /// `VREffectsHelper.isInsideOpaqueBlock`: true only when the HMD center AND a 0.05-block
+    /// probe neighborhood around it sit inside suffocating blocks (prevents wall-grazing flashes).
+    fn vr_head_in_opaque_block(&self, head: [f64; 3]) -> bool {
+        if self.spectator() || !super::vr_settings::vr_settings().head_in_block_blackout {
+            return false;
+        }
+        const M: f64 = 0.05;
+        let center = head.map(|v| v.floor() as i32);
+        if !self.state_suffocating(self.world.block(center[0], center[1], center[2])) {
+            return false;
+        }
+        for [dx, dy, dz] in [
+            [M, 0.0, 0.0],
+            [-M, 0.0, 0.0],
+            [0.0, M, 0.0],
+            [0.0, -M, 0.0],
+            [0.0, 0.0, M],
+            [0.0, 0.0, -M],
+        ] {
+            let b = [
+                (head[0] + dx).floor() as i32,
+                (head[1] + dy).floor() as i32,
+                (head[2] + dz).floor() as i32,
+            ];
+            if !self.state_suffocating(self.world.block(b[0], b[1], b[2])) {
+                return false;
+            }
+        }
+        true
+    }
+
     /// `preTick`, before the player's physics: this tick's tracking with last tick's room, the
     /// snap turn, and the walking direction (`freemoveDirection`, the offhand controller).
     pub(super) fn vr_pre_tick(&mut self) {
@@ -305,6 +471,7 @@ impl Game<'_> {
             super::vr_run::vr_run_reset();
             super::vr_climb_claws::vr_boots_reset();
             super::vr_radial::vr_radial_reset();
+            super::vr_throw::vr_throw_reset();
             // A simulated look can have been saved in `vr_pre_tick` but never consumed if
             // tracking stops before `vr_post_tick`.  Do not apply it to a later real-VR tick.
             *SIM_LOOK.lock().unwrap_or_else(|e| e.into_inner()) = None;
@@ -417,15 +584,21 @@ impl Game<'_> {
                 }
             }
         }
-        let seated = super::vr_settings::vr_settings().seated;
-        if seated {
+        let s = super::vr_settings::vr_settings();
+        if s.seated {
             // Seated: the room stays on the player each tick (`snapRoomOriginToPlayerEntity`),
-            // the head at standing eye height.
-            if let (Some(p), Some(vr)) = (self.player.as_ref().map(|p| p.position), vr_player().as_mut()) {
+            // anchored at the calibrated (or initial seated) HMD eye height so leaning/sneaking works.
+            if let (Some(p), Some(vr)) = (self.player.as_ref(), vr_player().as_mut()) {
                 let data = vr.data(poses);
-                snap_room_origin(vr, &data, [p.x, p.y, p.z]);
-                // shortcut: a fixed 1.62 m eye; Vivecraft calibrates the seated height.
-                vr.room_origin[1] += f64::from(1.62 - poses.hmd.position[1] * vr.world_scale);
+                snap_room_origin(vr, &data, [p.position.x, p.position.y, p.position.z]);
+                let base_hmd_y = if s.player_height > 0.3 {
+                    s.player_height
+                } else {
+                    *vr.seated_eye_height
+                        .get_or_insert(poses.hmd.position[1].clamp(0.4, 2.2))
+                };
+                let target_eye = p.dimensions.eye_height;
+                vr.room_origin[1] += f64::from(target_eye - base_hmd_y * vr.world_scale);
             }
         } else {
             self.vr_move_in_room(poses)?;
@@ -435,8 +608,11 @@ impl Game<'_> {
         let Some(vr) = guard.as_mut() else {
             return Ok(());
         };
-        // `postTick`: turn the room about the head by this tick's snap turn.
-        if let Some(pre) = vr.pre {
+        // `postTick`: turn the room about the head by this tick's snap turn (not smooth turns,
+        // which already rotated per frame around the live head pivot).
+        if settings::world_rotation_increment() != 0.0
+            && let Some(pre) = vr.pre
+        {
             let start = pre.room.rotation.to_degrees();
             let end = vr.world_rotation;
             let pivot = pre.new_head_pivot(vr.room_origin, vr.world_scale);
@@ -444,8 +620,7 @@ impl Game<'_> {
         }
         let post = vr.data(poses);
         horizon_vr::set_room(Some(post.room));
-        let head = post.room.to_world(poses.hmd.translation()).map(|v| v.floor() as i32);
-        horizon_vr::set_head_in_block(self.state_suffocating(self.world.block(head[0], head[1], head[2])));
+        horizon_vr::set_head_in_block(self.vr_head_in_opaque_block(post.hmd_pos()));
         // `crossVec` for the look override: the aim's reach along the main controller.
         let reach = self.block_reach;
         let d = post.controller_dir(0).normalize_or_zero();
