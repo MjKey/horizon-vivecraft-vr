@@ -6,6 +6,11 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      run_tests:
+        description: 'Run Rust unit tests before packaging'
+        required: false
+        type: boolean
+        default: false
       create_release:
         description: 'Publish GitHub Release with installer and payload assets'
         required: false
@@ -83,6 +88,7 @@ jobs:
           git -C horizon apply --ignore-whitespace ..\horizon-hooks.patch
 
       - name: Run unit tests
+        if: ${{ inputs.run_tests == true }}
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -126,6 +132,41 @@ jobs:
           if (-not $dll) { throw 'x64 openxr_loader.dll not found in Khronos OpenXR archive' }
           Copy-Item -Force $dll.FullName horizon\target\fast\openxr_loader.dll
           Remove-Item -Recurse -Force openxr_tmp, openxr_loader.zip
+
+      - name: Stage Minecraft 26.3 jars for exporter compilation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $mc = Join-Path (Resolve-Path .\horizon).Path '.local\minecraft\26.3'
+          $jars = Join-Path $mc 'jars'
+          $libs = Join-Path $mc 'libraries\client'
+          New-Item -ItemType Directory -Force $jars, $libs | Out-Null
+
+          $vm = Invoke-RestMethod -UseBasicParsing 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'
+          $ver = $vm.versions | Where-Object { $_.id -eq '26.3' } | Select-Object -First 1
+          if (-not $ver) { throw 'Minecraft 26.3 not found in Mojang version manifest' }
+
+          $manifestPath = Join-Path $mc 'manifest.json'
+          Invoke-WebRequest -Uri $ver.url -OutFile $manifestPath -UseBasicParsing
+          [IO.File]::WriteAllText((Join-Path $mc 'prepared.json'), '{"manifest_source":"prism","server_source":"client"}')
+
+          $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+          Invoke-WebRequest -Uri $manifest.downloads.client.url -OutFile (Join-Path $jars 'client.jar') -UseBasicParsing
+
+          $downloads = @()
+          foreach ($lib in $manifest.libraries) {
+            if ($lib.downloads -and $lib.downloads.artifact -and $lib.downloads.artifact.url -and $lib.downloads.artifact.path) {
+              $downloads += [pscustomobject]@{
+                Url  = $lib.downloads.artifact.url
+                Dest = (Join-Path $libs ($lib.downloads.artifact.path -replace '/', '\'))
+              }
+            }
+          }
+          $downloads | ForEach-Object -Parallel {
+            $dir = Split-Path -Parent $_.Dest
+            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force $dir | Out-Null }
+            Invoke-WebRequest -Uri $_.Url -OutFile $_.Dest -UseBasicParsing
+          } -ThrottleLimit 12
 
       - name: Package installer and payload
         id: pkg
