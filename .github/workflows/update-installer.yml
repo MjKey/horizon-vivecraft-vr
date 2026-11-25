@@ -1,0 +1,98 @@
+name: Update Installer Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing GitHub Release tag whose installer assets should be updated'
+        required: false
+        type: string
+        default: 'v0.4.0'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  update-installer:
+    name: Build Installer & Update Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry and git dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-installer-cargo-${{ hashFiles('installer/app/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-installer-cargo-
+            ${{ runner.os }}-cargo-
+
+      - name: Run installer unit tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cargo test --manifest-path installer/app/Cargo.toml
+
+      - name: Build HorizonVR-Installer.exe
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          cargo build --release --manifest-path installer/app/Cargo.toml 2>&1 | Out-Host
+          $ErrorActionPreference = 'Stop'
+          if ($LASTEXITCODE) { throw 'building the installer failed' }
+          $exe = 'installer\app\target\release\HorizonVR-Installer.exe'
+          if ((Get-Item $exe).Length -gt 5MB) { throw 'HorizonVR-Installer.exe is over 5 MB' }
+
+      - name: Repackage release assets with new installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag || 'v0.4.0' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $stageRoot = Join-Path (Get-Location).Path 'work\stage\HorizonVR-Installer'
+          $out = Join-Path (Get-Location).Path 'installer\out'
+          Remove-Item -Recurse -Force 'work', $out -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force 'work', $stageRoot, $out | Out-Null
+
+          gh release download $env:RELEASE_TAG -p 'HorizonVR-Payload.zip' -D work
+          if ($LASTEXITCODE) { throw "Failed to download HorizonVR-Payload.zip from $env:RELEASE_TAG" }
+
+          Expand-Archive -Path 'work\HorizonVR-Payload.zip' -DestinationPath $stageRoot -Force
+          $filesDir = Join-Path $stageRoot 'files'
+          if (-not (Test-Path (Join-Path $filesDir 'horizon-client.exe'))) {
+            throw 'files\horizon-client.exe missing inside downloaded payload'
+          }
+
+          $exe = 'installer\app\target\release\HorizonVR-Installer.exe'
+          Copy-Item -Force $exe (Join-Path $filesDir 'HorizonVR-Installer.exe')
+          Copy-Item -Force $exe (Join-Path $stageRoot 'HorizonVR-Installer.exe')
+          Copy-Item -Force 'installer\HorizonVR-Installer.ps1' $stageRoot
+          Copy-Item -Force 'installer\Install Horizon VR.bat' $stageRoot
+          Copy-Item -Force $exe (Join-Path $out 'HorizonVR-Installer.exe')
+
+          $payload = Join-Path $out 'HorizonVR-Payload.zip'
+          Compress-Archive -Path $filesDir -DestinationPath $payload
+          $hash = (Get-FileHash $payload -Algorithm SHA256).Hash.ToLower()
+          [IO.File]::WriteAllText("$payload.sha256", "$hash  HorizonVR-Payload.zip`n")
+          Compress-Archive -Path $stageRoot -DestinationPath (Join-Path $out 'HorizonVR-Installer.zip')
+
+          gh release upload $env:RELEASE_TAG `
+            (Join-Path $out 'HorizonVR-Installer.exe') `
+            (Join-Path $out 'HorizonVR-Payload.zip') `
+            (Join-Path $out 'HorizonVR-Payload.zip.sha256') `
+            (Join-Path $out 'HorizonVR-Installer.zip') `
+            --clobber
+          if ($LASTEXITCODE) { throw "Failed to upload updated assets to $env:RELEASE_TAG" }

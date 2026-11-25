@@ -1,5 +1,5 @@
-//! The installer window (plain Win32): three folder rows, a log and the four buttons. Each action
-//! runs on a worker thread that posts its log lines and result back to the window.
+//! The installer window (plain Win32): a single install folder row, a log and the four buttons.
+//! Each action runs on a worker thread that posts its log lines and result back to the window.
 use crate::R;
 use std::ptr::null_mut;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
@@ -12,7 +12,7 @@ const ID_UNINSTALL: usize = 10;
 const ID_UPDATE: usize = 11;
 const ID_REPAIR: usize = 12;
 const ID_INSTALL: usize = 13;
-const ID_BROWSE: usize = 20; // + row
+const ID_BROWSE: usize = 20;
 const WM_LOG: u32 = WM_APP + 1;
 const WM_DONE: u32 = WM_APP + 2;
 const WM_STATUS: u32 = WM_APP + 3;
@@ -21,9 +21,10 @@ const EM_REPLACESEL: u32 = 0x00C2;
 
 struct Ui {
     status: HWND,
-    boxes: [HWND; 3],
+    install_box: HWND,
     log: HWND,
     buttons: [HWND; 4],
+    pack_url: Option<String>,
 }
 
 static mut UI: Option<Ui> = None;
@@ -95,7 +96,7 @@ fn enable_buttons(on: bool) {
 
 /// The installed and latest versions, on the status line; the Update button only when newer.
 fn refresh_status(hwnd: HWND) {
-    let dest = crate::full_path(&text_of(ui().boxes[0]));
+    let dest = crate::full_path(&text_of(ui().install_box));
     let h = hwnd as isize;
     std::thread::spawn(move || {
         let have = crate::read_version(&dest.join("version.txt"));
@@ -112,16 +113,17 @@ fn refresh_status(hwnd: HWND) {
     });
 }
 
-type Action = fn(&str, &str, &str, crate::Say) -> R<()>;
+type Action = fn(&str, Option<&str>, crate::Say) -> R<()>;
 
 /// Runs one action with the buttons off, then shows its result or error.
 fn act(hwnd: HWND, action: Action, done: &'static str, what: &'static str) {
-    let [a, b, c] = ui().boxes.map(text_of);
+    let dest = text_of(ui().install_box);
+    let pack_url = ui().pack_url.clone();
     enable_buttons(false);
     let h = hwnd as isize;
     std::thread::spawn(move || {
         let say = |t: &str| post(h, WM_LOG, t.to_owned());
-        let r = action(&a, &b, &c, &say);
+        let r = action(&dest, pack_url.as_deref(), &say);
         let msg = match r {
             Ok(()) => (true, done.to_owned()),
             Err(e) => {
@@ -142,7 +144,7 @@ extern "system" fn proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
                 match id {
                     ID_INSTALL => act(
                         hwnd,
-                        |a, b, c, s| crate::install(a, b, c, s, None),
+                        |a, p, s| crate::install(a, p, s, None),
                         "Horizon VR is installed. Start SteamVR, then open \"Horizon VR\" on your desktop.",
                         "Install",
                     ),
@@ -154,31 +156,24 @@ extern "system" fn proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
                     ),
                     ID_UPDATE => act(
                         hwnd,
-                        |a, b, c, s| {
-                            if crate::update(a, b, c, s)? { Ok(()) } else { Err("Horizon VR is already up to date.".into()) }
+                        |a, p, s| {
+                            if crate::update(a, p, s)? { Ok(()) } else { Err("Horizon VR is already up to date.".into()) }
                         },
                         "Horizon VR is updated. Start SteamVR, then open \"Horizon VR\" on your desktop.",
                         "Update",
                     ),
                     ID_UNINSTALL => {
-                        let dest = text_of(ui().boxes[0]);
+                        let dest = text_of(ui().install_box);
                         let q = format!("Uninstall Horizon VR from {dest}? Your worlds and settings are kept.");
                         let r = MessageBoxW(hwnd, wide(&q).as_ptr(), wide("Uninstall Horizon VR").as_ptr(), MB_YESNO | MB_ICONQUESTION);
                         if r == IDYES {
-                            act(hwnd, |a, _, _, s| crate::uninstall(a, s), "Horizon VR is uninstalled.", "Uninstall");
+                            act(hwnd, |a, _, s| crate::uninstall(a, s), "Horizon VR is uninstalled.", "Uninstall");
                         }
                     }
-                    _ if (ID_BROWSE..ID_BROWSE + 3).contains(&id) => {
-                        let row = id - ID_BROWSE;
-                        let tb = ui().boxes[row];
-                        let cur = text_of(tb);
-                        let picked = if row == 2 {
-                            rfd::FileDialog::new().add_filter("Server jar", &["jar"]).pick_file()
-                        } else {
-                            rfd::FileDialog::new().set_directory(&cur).pick_folder()
-                        };
-                        if let Some(p) = picked {
-                            set_text(tb, &p.display().to_string());
+                    ID_BROWSE => {
+                        let cur = text_of(ui().install_box);
+                        if let Some(p) = rfd::FileDialog::new().set_directory(&cur).pick_folder() {
+                            set_text(ui().install_box, &p.display().to_string());
                         }
                     }
                     _ => {}
@@ -215,7 +210,7 @@ extern "system" fn proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
     }
 }
 
-pub fn run(install_dir: String) {
+pub fn run(install_dir: String, pack_url: Option<String>) {
     // SAFETY: standard Win32 window setup and message loop on this thread.
     unsafe {
         let inst = GetModuleHandleW(null_mut());
@@ -234,7 +229,7 @@ pub fn run(install_dir: String) {
         };
         RegisterClassW(&wc);
         let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
-        let mut r = windows_sys::Win32::Foundation::RECT { left: 0, top: 0, right: 560, bottom: 430 };
+        let mut r = windows_sys::Win32::Foundation::RECT { left: 0, top: 0, right: 560, bottom: 320 };
         AdjustWindowRect(&mut r, style, 0);
         let (w, h) = (r.right - r.left, r.bottom - r.top);
         let x = (GetSystemMetrics(SM_CXSCREEN) - w) / 2;
@@ -254,22 +249,20 @@ pub fn run(install_dir: String) {
             null_mut(),
         );
         let status = child(hwnd, "STATIC", "", 0, 0, 12, 10, 536, 20, 0);
-        let rows = [
-            ("Install folder", install_dir),
-            ("Minecraft folder with 26.3 (found automatically)", crate::find_minecraft().display().to_string()),
-            (
-                "Minecraft 26.3 server jar (found automatically, or download it from minecraft.net)",
-                crate::find_server_jar(),
-            ),
-        ];
-        let mut boxes = [null_mut(); 3];
-        let mut y = 38;
-        for (i, (label, value)) in rows.iter().enumerate() {
-            child(hwnd, "STATIC", label, 0, 0, 12, y, 536, 18, 0);
-            boxes[i] = child(hwnd, "EDIT", value, WS_TABSTOP | ES_AUTOHSCROLL as u32, WS_EX_CLIENTEDGE, 12, y + 20, 440, 23, 0);
-            child(hwnd, "BUTTON", "Browse...", WS_TABSTOP, 0, 460, y + 19, 88, 25, ID_BROWSE + i);
-            y += 56;
-        }
+        child(hwnd, "STATIC", "Install folder", 0, 0, 12, 38, 536, 18, 0);
+        let install_box = child(
+            hwnd,
+            "EDIT",
+            &install_dir,
+            WS_TABSTOP | ES_AUTOHSCROLL as u32,
+            WS_EX_CLIENTEDGE,
+            12,
+            58,
+            440,
+            23,
+            0,
+        );
+        child(hwnd, "BUTTON", "Browse...", WS_TABSTOP, 0, 460, 57, 88, 25, ID_BROWSE);
         let log = child(
             hwnd,
             "EDIT",
@@ -277,14 +270,14 @@ pub fn run(install_dir: String) {
             WS_VSCROLL | ES_MULTILINE as u32 | ES_READONLY as u32 | ES_AUTOVSCROLL as u32,
             WS_EX_CLIENTEDGE,
             12,
-            y,
+            94,
             536,
-            150,
+            166,
             0,
         );
         let button = |text, x, id, def: bool| {
             let s = WS_TABSTOP | if def { BS_DEFPUSHBUTTON as u32 } else { 0 };
-            child(hwnd, "BUTTON", text, s, 0, x, y + 160, 100, 30, id)
+            child(hwnd, "BUTTON", text, s, 0, x, 270, 100, 30, id)
         };
         let buttons = [
             button("Uninstall", 12, ID_UNINSTALL, false),
@@ -292,7 +285,7 @@ pub fn run(install_dir: String) {
             button("Repair", 340, ID_REPAIR, false),
             button("Install", 448, ID_INSTALL, true),
         ];
-        *std::ptr::addr_of_mut!(UI) = Some(Ui { status, boxes, log, buttons });
+        *std::ptr::addr_of_mut!(UI) = Some(Ui { status, install_box, log, buttons, pack_url });
         ShowWindow(hwnd, SW_SHOW);
         refresh_status(hwnd);
         let mut m = std::mem::zeroed::<MSG>();

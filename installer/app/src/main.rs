@@ -1,20 +1,19 @@
 //! Horizon VR installer: a small window like Vivecraft's. Copies the prebuilt game beside this
-//! program to the chosen folder, prepares the game files from your own Minecraft 26.3, and adds a
-//! desktop shortcut. It finds the Horizon launcher's (or the Minecraft Launcher's) Minecraft 26.3
-//! and server jar by itself. `-Silent` installs with what it found, without the window. Install
-//! also copies this installer into the install folder (a Start menu shortcut opens it), where its
-//! Update button fetches the latest release from GitHub and updates the game and itself.
+//! program (or from GitHub Releases) to the chosen folder, downloads pre-prepared Minecraft 26.3
+//! resources from `https://mjkey.ru/rustvr.zip` (override with `HORIZONVR_PACK_URL` or `--pack-url`),
+//! and adds a desktop shortcut. `-Silent` installs without the window. Install also copies this
+//! installer into the install folder (a Start menu shortcut opens it), where its Update button
+//! fetches the latest release from GitHub and updates the game and itself.
 #![windows_subsystem = "windows"]
 
 mod gui;
 
 use serde_json::Value;
-use sha1::Digest;
+use sha2::Digest;
 use std::io::{BufRead, BufReader, Read};
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::Mutex;
 use std::time::Duration;
 use std::{env, fs};
 
@@ -23,9 +22,24 @@ pub type R<T> = Result<T, String>;
 
 const EXE: &str = "HorizonVR-Installer.exe";
 const NO_WINDOW: u32 = 0x0800_0000;
+const DEFAULT_PACK_URL: &str = "https://mjkey.ru/rustvr.zip";
 
 fn env_dir(name: &str) -> PathBuf {
     PathBuf::from(env::var_os(name).unwrap_or_default())
+}
+
+/// Resource pack download URL (`--pack-url`, else `HORIZONVR_PACK_URL`, else `DEFAULT_PACK_URL`).
+fn pack_url(override_url: Option<&str>) -> String {
+    if let Some(u) = override_url.map(str::trim).filter(|u| !u.is_empty()) {
+        return u.to_owned();
+    }
+    if let Ok(u) = env::var("HORIZONVR_PACK_URL") {
+        let u = u.trim();
+        if !u.is_empty() {
+            return u.to_owned();
+        }
+    }
+    DEFAULT_PACK_URL.to_owned()
 }
 
 /// The folder this program is in.
@@ -69,32 +83,8 @@ fn desktop_link() -> PathBuf {
         .join("Horizon VR.lnk")
 }
 
-/// A Minecraft folder with 26.3 downloaded: the Horizon launcher's first, then the official one.
-pub fn find_minecraft() -> PathBuf {
-    let official = env_dir("APPDATA").join(".minecraft");
-    [launcher().join("minecraft"), official.clone()]
-        .into_iter()
-        .find(|d| d.join(r"versions\26.3\26.3.jar").exists())
-        .unwrap_or(official)
-}
-
 fn json_file(path: &Path) -> Option<Value> {
     serde_json::from_str(fs::read_to_string(path).ok()?.trim_start_matches('\u{feff}')).ok()
-}
-
-/// The pinned 26.3 server jar's SHA-1: from the lock beside this program (in files\ in the
-/// unzipped release, at the top in an install folder), or the release an install uses.
-static SERVER_SHA: Mutex<Option<String>> = Mutex::new(None);
-
-fn server_sha() -> Option<String> {
-    let mut s = SERVER_SHA.lock().unwrap_or_else(|e| e.into_inner());
-    if s.is_none() {
-        let h = here();
-        *s = [h.join(r"files\research-lock.json"), h.join("research-lock.json")]
-            .iter()
-            .find_map(|p| json_file(p)?["minecraft"]["server_sha1"].as_str().map(str::to_owned));
-    }
-    s.clone()
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -112,31 +102,6 @@ fn file_hash<D: Digest>(path: &Path) -> Option<String> {
         }
         d.update(&buf[..n]);
     }
-}
-
-pub fn is_server_jar(path: &Path) -> bool {
-    let Some(sha) = server_sha() else { return false };
-    path.is_file() && file_hash::<sha1::Sha1>(path).is_some_and(|h| h.eq_ignore_ascii_case(&sha))
-}
-
-/// The 26.3 server jar: the one the Horizon launcher downloaded, else a matching one in Downloads.
-pub fn find_server_jar() -> String {
-    let l = launcher();
-    let mut candidates = vec![l.join(r"server-jars\26.3.jar")];
-    if let Ok(vs) = fs::read_dir(l.join("versions")) {
-        candidates.extend(vs.flatten().map(|v| v.path().join(r".local\minecraft\26.3\jars\server.jar")));
-    }
-    if let Ok(ds) = fs::read_dir(env_dir("USERPROFILE").join("Downloads")) {
-        candidates.extend(ds.flatten().map(|e| e.path()).filter(|p| {
-            p.extension().is_some_and(|e| e.eq_ignore_ascii_case("jar"))
-                && fs::metadata(p).is_ok_and(|m| m.len() > 30 << 20)
-        }));
-    }
-    candidates
-        .into_iter()
-        .find(|j| is_server_jar(j))
-        .map(|j| j.display().to_string())
-        .unwrap_or_default()
 }
 
 /// Run from an install folder (its copy of the installer, its version.txt): that folder.
@@ -467,8 +432,194 @@ pub fn uninstall(dest: &str, say: Say) -> R<()> {
     Ok(())
 }
 
-/// Reinstalls over a broken install: fresh game files and freshly prepared Minecraft files.
-pub fn repair(dest: &str, mc: &str, server: &str, say: Say) -> R<()> {
+fn resources_ready(dest: &Path) -> bool {
+    if !dest.join("horizon-prepare.exe").exists()
+        || !dest.join(r".local\horizon-client\26.3\horizon-resources.json").exists()
+    {
+        return false;
+    }
+    Command::new(dest.join("horizon-prepare.exe"))
+        .args(["--check", "--root", &dest.display().to_string()])
+        .current_dir(dest)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .creation_flags(NO_WINDOW)
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
+fn resource_root(dir: &Path) -> Option<PathBuf> {
+    if dir.join("horizon-resources.json").is_file() {
+        return Some(dir.to_path_buf());
+    }
+    fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .filter(|e| e.path().is_dir())
+        .find_map(|e| resource_root(&e.path()))
+}
+
+fn minecraft_root(dir: &Path) -> Option<PathBuf> {
+    if dir.join(r"versions\26.3\26.3.jar").is_file() {
+        return Some(dir.to_path_buf());
+    }
+    fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .filter(|e| e.path().is_dir())
+        .find_map(|e| minecraft_root(&e.path()))
+}
+
+fn server_jar_in(dir: &Path, expected_sha1: Option<&str>) -> Option<PathBuf> {
+    let matches_jar = |p: &Path| -> bool {
+        p.is_file()
+            && match expected_sha1 {
+                Some(sha) => file_hash::<sha1::Sha1>(p).is_some_and(|h| h.eq_ignore_ascii_case(sha)),
+                None => p.file_name().is_some_and(|n| n.eq_ignore_ascii_case("server.jar")),
+            }
+    };
+    let direct = dir.join("server.jar");
+    if matches_jar(&direct) {
+        return Some(direct);
+    }
+    let mut subdirs = Vec::new();
+    for entry in fs::read_dir(dir).ok()?.flatten() {
+        let p = entry.path();
+        if p.is_dir() {
+            let name = entry.file_name();
+            let s = name.to_string_lossy();
+            if !s.eq_ignore_ascii_case("libraries")
+                && !s.eq_ignore_ascii_case("assets")
+                && !s.eq_ignore_ascii_case("versions")
+            {
+                subdirs.push(p);
+            }
+        } else if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("jar")) && matches_jar(&p) {
+            return Some(p);
+        }
+    }
+    subdirs.into_iter().find_map(|d| server_jar_in(&d, expected_sha1))
+}
+
+fn move_or_copy_dir(from: &Path, to: &Path) -> R<()> {
+    if let Some(parent) = to.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+    }
+    if to.exists() {
+        remove(to)?;
+    }
+    if fs::rename(from, to).is_ok() {
+        return Ok(());
+    }
+    copy_all(from, to)
+}
+
+fn pack_part_path() -> PathBuf {
+    env::temp_dir().join("horizonvr-download").join("pack").join("rustvr.zip.part")
+}
+
+fn ensure_manifest(dest: &Path, mc_root: Option<&Path>, say: Say) -> R<()> {
+    let sha = json_file(&dest.join("research-lock.json"))
+        .and_then(|j| j["minecraft"]["manifest_sha1"].as_str().map(str::to_owned))
+        .ok_or("The release's research-lock.json has no manifest_sha1.")?;
+    let manifest = dest.join(r".local\minecraft\26.3\manifest.json");
+    if file_hash::<sha1::Sha1>(&manifest).is_some_and(|h| h.eq_ignore_ascii_case(&sha)) {
+        return Ok(());
+    }
+    fs::create_dir_all(manifest.parent().expect("has a parent")).map_err(|e| e.to_string())?;
+    if let Some(local_json) = mc_root.map(|m| m.join(r"versions\26.3\26.3.json"))
+        && file_hash::<sha1::Sha1>(&local_json).is_some_and(|h| h.eq_ignore_ascii_case(&sha))
+    {
+        fs::copy(&local_json, &manifest).map_err(|e| format!("{}: {e}", manifest.display()))?;
+        return Ok(());
+    }
+    say("Downloading the Minecraft 26.3 version file from Mojang...");
+    download(&format!("https://piston-meta.mojang.com/v1/packages/{sha}/26.3.json"), &manifest)?;
+    if !file_hash::<sha1::Sha1>(&manifest).is_some_and(|h| h.eq_ignore_ascii_case(&sha)) {
+        let _ = fs::remove_file(&manifest);
+        return Err("The downloaded version file did not match.".into());
+    }
+    Ok(())
+}
+
+fn install_resource_pack(dest: &Path, url: &str, say: Say) -> R<()> {
+    let part = pack_part_path();
+    if let Some(parent) = part.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+    }
+    let work = env::temp_dir().join(format!("horizonvr-pack-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&work);
+
+    let extract_from_part = |part: &Path, work: &Path| -> R<()> {
+        fs::create_dir_all(work).map_err(|e| e.to_string())?;
+        let f = fs::File::open(part).map_err(|e| e.to_string())?;
+        zip::ZipArchive::new(f)
+            .and_then(|mut z| z.extract(work))
+            .map_err(|e| format!("Unzipping the resource pack failed: {e}"))
+    };
+
+    let had_part = part.exists() && fs::metadata(&part).is_ok_and(|m| m.len() > 0);
+    say(&format!("Downloading game pack from {url}..."));
+    download_resume(url, &part, say)?;
+    if let Err(err) = extract_from_part(&part, &work) {
+        let _ = fs::remove_dir_all(&work);
+        if !had_part {
+            return Err(err);
+        }
+        let _ = fs::remove_file(&part);
+        say("Saved partial download was invalid; restarting download from scratch...");
+        download_resume(url, &part, say)?;
+        if let Err(err2) = extract_from_part(&part, &work) {
+            let _ = fs::remove_dir_all(&work);
+            return Err(err2);
+        }
+    }
+
+    let result = (|| -> R<()> {
+        let server_sha = json_file(&dest.join("research-lock.json"))
+            .and_then(|j| j["minecraft"]["server_sha1"].as_str().map(str::to_owned));
+        let prepare = dest.join("horizon-prepare.exe");
+        let dest_str = dest.display().to_string();
+
+        if let Some(mc_root) = minecraft_root(&work) {
+            let Some(server_jar) = server_jar_in(&work, server_sha.as_deref()) else {
+                return Err("The downloaded rustvr.zip is missing the Minecraft 26.3 server.jar.".into());
+            };
+            ensure_manifest(dest, Some(&mc_root), say)?;
+            say("Preparing the game files from the downloaded Minecraft 26.3 pack (about a minute)...");
+            let mcs = mc_root.display().to_string();
+            let srv = server_jar.display().to_string();
+            if run(&prepare, &["--prepare", "--minecraft-dir", &mcs, "--server-jar", &srv], dest, say) != 0 {
+                return Err("Preparing the game files failed (see the log).".into());
+            }
+            if run(&prepare, &["sounds", "--minecraft-dir", &mcs], dest, say) != 0 {
+                say("Sounds were not copied; the game runs without them.");
+            }
+            return Ok(());
+        }
+
+        if let Some(root) = resource_root(&work) {
+            say("Installing pre-prepared game resources (26.3)...");
+            let target = dest.join(r".local\horizon-client\26.3");
+            move_or_copy_dir(&root, &target)?;
+            if run(&prepare, &["--check", "--root", &dest_str], dest, say) != 0 {
+                return Err("The downloaded resource pack is incomplete or incompatible (see the log).".into());
+            }
+            return Ok(());
+        }
+
+        Err("The downloaded rustvr.zip does not contain Minecraft 26.3 (versions\\26.3\\26.3.jar + server.jar) or prepared resources.".into())
+    })();
+
+    let _ = fs::remove_dir_all(&work);
+    result?;
+    let _ = fs::remove_file(&part);
+    Ok(())
+}
+
+/// Reinstalls over a broken install: fresh game files and freshly downloaded Minecraft resources.
+pub fn repair(dest: &str, pack_override: Option<&str>, say: Say) -> R<()> {
     let d = full_path(dest);
     assert_closed(&d)?;
     let local = d.join(".local");
@@ -476,11 +627,15 @@ pub fn repair(dest: &str, mc: &str, server: &str, say: Say) -> R<()> {
         say("Removing the prepared game files...");
         remove(&local)?;
     }
-    install(dest, mc, server, say, None)
+    let part = pack_part_path();
+    if part.exists() {
+        let _ = fs::remove_file(&part);
+    }
+    install(dest, pack_override, say, None)
 }
 
 /// Updates an install to the latest release, the installer in it too. False when already latest.
-pub fn update(dest: &str, mc: &str, server: &str, say: Say) -> R<bool> {
+pub fn update(dest: &str, pack_override: Option<&str>, say: Say) -> R<bool> {
     let d = full_path(dest);
     let have = read_version(&d.join("version.txt"));
     let latest = get_latest()?;
@@ -490,7 +645,7 @@ pub fn update(dest: &str, mc: &str, server: &str, say: Say) -> R<bool> {
     }
     assert_closed(&d)?;
     let src = get_release(&latest, say)?;
-    install(dest, mc, server, say, Some(src))?;
+    install(dest, pack_override, say, Some(src))?;
     Ok(true)
 }
 
@@ -518,20 +673,18 @@ fn shortcut(link: &Path, target: &Path, dir: &Path, icon: &Path) -> R<()> {
 
 /// The whole install. `src`: the folder with the release's files\ (default: beside this program;
 /// the installer copy in an install folder has none, so it fetches the latest release).
-pub fn install(dest: &str, mc: &str, server: &str, say: Say, src: Option<PathBuf>) -> R<()> {
+pub fn install(dest: &str, pack_override: Option<&str>, say: Say, src: Option<PathBuf>) -> R<()> {
     let dest = full_path(dest);
-    let mc = full_path(mc);
-    let mut server = server.trim().trim_matches('"').to_owned();
     let h = here();
     let mut src = src.unwrap_or_else(|| h.clone());
-    // Already installed (this version, game files prepared): nothing to copy or prepare again.
+    // Already installed (this version, game files prepared): nothing to copy or download again.
     // Only a missing launcher instance is added. Repair removes .local first, so it still runs.
     // The copy in an install folder has no files\ beside it: its own folder's version.
     let want = [src.join(r"files\version.txt"), src.join("version.txt")].iter().find_map(|p| read_version(p));
     if let Some(want) = want.filter(|w| {
         Some(w) == read_version(&dest.join("version.txt")).as_ref()
             && dest.join("horizon-client.exe").exists()
-            && dest.join(r".local\horizon-client\26.3").exists()
+            && resources_ready(&dest)
     }) {
         let has_instance = !launcher_exe().exists() || has_launcher_instance();
         if !has_instance && let Err(e) = add_launcher_instance(&dest, say) {
@@ -547,36 +700,6 @@ pub fn install(dest: &str, mc: &str, server: &str, say: Say, src: Option<PathBuf
         // The small installer on its own (or an install folder's copy): the game comes from the
         // latest release.
         src = get_release(&get_latest()?, say)?;
-    }
-    if !mc.join(r"versions\26.3\26.3.jar").exists() {
-        return Err("Minecraft 26.3 is not downloaded in that Minecraft folder. Play 26.3 once in the Horizon launcher or the Minecraft Launcher first.".into());
-    }
-    // The pinned hash from the release itself, when this program had no lock beside it.
-    {
-        let mut s = SERVER_SHA.lock().unwrap_or_else(|e| e.into_inner());
-        if s.is_none() {
-            *s = json_file(&src.join(r"files\research-lock.json"))
-                .and_then(|j| j["minecraft"]["server_sha1"].as_str().map(str::to_owned));
-        }
-    }
-    if server.is_empty() {
-        server = find_server_jar();
-    }
-    let base_file = [src.join(r"files\horizon-base.txt"), src.join("horizon-base.txt")].into_iter().find(|p| p.exists());
-    if (server.is_empty() || !is_server_jar(Path::new(&server)))
-        && let Some(bf) = &base_file
-        && launcher_exe().exists()
-    {
-        // No jar yet: the launcher installs and prepares the nightly this build is on, which
-        // downloads it (and the version then plays in the launcher too).
-        let want = fs::read_to_string(bf).unwrap_or_default();
-        let base = resolve_base(want.trim(), &dest, say)?;
-        say(&format!("Preparing Horizon {base} in the Horizon launcher (a few minutes)..."));
-        run(&launcher_exe(), &["prepare", "--version", &base], &existing(&dest), say);
-        server = find_server_jar();
-    }
-    if server.is_empty() || !is_server_jar(Path::new(&server)) {
-        return Err("Choose the Minecraft 26.3 server jar (download it from minecraft.net). Another version does not work.".into());
     }
     assert_closed(&dest)?;
 
@@ -607,30 +730,10 @@ pub fn install(dest: &str, mc: &str, server: &str, say: Say, src: Option<PathBuf
         copy_all(&src.join(EXE), &dest.join(EXE))?;
     }
 
-    // The Minecraft Launcher may rewrite its 26.3 version file; fetch Mojang's own, as the
-    // preparer asks, and check it against the pinned SHA-1.
-    let sha = json_file(&dest.join("research-lock.json"))
-        .and_then(|j| j["minecraft"]["manifest_sha1"].as_str().map(str::to_owned))
-        .ok_or("The release's research-lock.json has no manifest_sha1.")?;
-    let manifest = dest.join(r".local\minecraft\26.3\manifest.json");
-    if !file_hash::<sha1::Sha1>(&manifest).is_some_and(|h| h.eq_ignore_ascii_case(&sha)) {
-        say("Downloading the Minecraft 26.3 version file from Mojang...");
-        fs::create_dir_all(manifest.parent().expect("has a parent")).map_err(|e| e.to_string())?;
-        download(&format!("https://piston-meta.mojang.com/v1/packages/{sha}/26.3.json"), &manifest)?;
-        if !file_hash::<sha1::Sha1>(&manifest).is_some_and(|h| h.eq_ignore_ascii_case(&sha)) {
-            let _ = fs::remove_file(&manifest);
-            return Err("The downloaded version file did not match.".into());
-        }
-    }
-
-    say("Preparing the game files from your Minecraft (about a minute)...");
-    let prepare = dest.join("horizon-prepare.exe");
-    let mcs = mc.display().to_string();
-    if run(&prepare, &["--prepare", "--minecraft-dir", &mcs, "--server-jar", &server], &dest, say) != 0 {
-        return Err("Preparing the game files failed (see the log).".into());
-    }
-    if run(&prepare, &["sounds", "--minecraft-dir", &mcs], &dest, say) != 0 {
-        say("Sounds were not copied; the game runs without them.");
+    if resources_ready(&dest) {
+        say("Game resources (26.3) are already ready.");
+    } else {
+        install_resource_pack(&dest, &pack_url(pack_override), say)?;
     }
 
     let icon = dest.join("horizon-client.exe");
@@ -836,7 +939,7 @@ fn check(dest: &str, from_launcher: bool) -> i32 {
         return 0;
     }
     let print = |t: &str| println!("{t}");
-    match update(dest, &find_minecraft().display().to_string(), &find_server_jar(), &print) {
+    match update(dest, None, &print) {
         Ok(_) if from_launcher => {
             message(&format!("Horizon VR is updated to {}. Click Play again.", latest.version), "Horizon VR", false);
             1
@@ -865,8 +968,7 @@ struct Args {
     check: bool,
     from_launcher: bool,
     install_dir: Option<String>,
-    minecraft_dir: Option<String>,
-    server_jar: Option<String>,
+    pack_url: Option<String>,
 }
 
 /// `-Silent`, `--silent` and `/silent` alike (the PowerShell installer's switches, any case).
@@ -883,8 +985,10 @@ fn parse_args() -> Args {
             "check" => a.check = true,
             "fromlauncher" => a.from_launcher = true,
             "installdir" => a.install_dir = it.next(),
-            "minecraftdir" => a.minecraft_dir = it.next(),
-            "serverjar" => a.server_jar = it.next(),
+            "packurl" => a.pack_url = it.next(),
+            "minecraftdir" | "serverjar" => {
+                let _ = it.next();
+            }
             _ => {}
         }
     }
@@ -911,17 +1015,16 @@ fn main() {
     }
     if a.silent {
         attach_console();
-        let mc = a.minecraft_dir.clone().unwrap_or_else(|| find_minecraft().display().to_string());
-        let jar = a.server_jar.clone().unwrap_or_else(find_server_jar);
+        let pack = a.pack_url.as_deref();
         let print = |t: &str| println!("{t}");
         let r = if a.uninstall {
             uninstall(&dest, &print)
         } else if a.update {
-            update(&dest, &mc, &jar, &print).map(drop)
+            update(&dest, pack, &print).map(drop)
         } else if a.repair {
-            repair(&dest, &mc, &jar, &print)
+            repair(&dest, pack, &print)
         } else {
-            install(&dest, &mc, &jar, &print, None)
+            install(&dest, pack, &print, None)
         };
         if let Err(e) = r {
             println!("Failed: {e}");
@@ -929,7 +1032,7 @@ fn main() {
         }
         std::process::exit(0);
     }
-    gui::run(dest);
+    gui::run(dest, a.pack_url);
 }
 
 #[cfg(test)]
@@ -1025,7 +1128,7 @@ mod tests {
 
     /// One test: the env vars it sets are the whole process's.
     #[test]
-    fn base_fallback_and_server_jar() {
+    fn base_fallback() {
         let work = env::temp_dir().join(format!("horizonvr-unit-{}", std::process::id()));
         let _ = fs::remove_dir_all(&work);
         fs::create_dir_all(work.join(r"versions\nightly-old")).unwrap();
@@ -1051,15 +1154,26 @@ mod tests {
         assert_eq!(resolve_base("nightly-gone", &work, &quiet).unwrap(), "nightly-old", "gone pin, installed one");
         fs::remove_dir(work.join(r"versions\nightly-old")).unwrap();
         assert_eq!(resolve_base("nightly-gone", &work, &quiet).unwrap(), "nightly-new", "none installed: latest");
+        let _ = fs::remove_dir_all(&work);
+    }
 
-        // Another version's jar in Downloads is not taken for the 26.3 server jar.
-        let home = work.join("home");
-        fs::create_dir_all(home.join("Downloads")).unwrap();
-        fs::File::create(home.join(r"Downloads\server-1.21.4.jar")).unwrap().set_len(31 << 20).unwrap();
-        *SERVER_SHA.lock().unwrap() = Some("0".repeat(40));
-        // SAFETY: as above.
-        unsafe { env::set_var("USERPROFILE", &home) };
-        assert_eq!(find_server_jar(), "");
+    #[test]
+    fn pack_layout_detection() {
+        let work = env::temp_dir().join(format!("horizonvr-pack-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&work);
+        let mc = work.join("minecraft");
+        fs::create_dir_all(mc.join(r"versions\26.3")).unwrap();
+        fs::write(mc.join(r"versions\26.3\26.3.jar"), b"jar").unwrap();
+        fs::write(work.join("server.jar"), b"srv").unwrap();
+
+        assert_eq!(minecraft_root(&work).as_deref(), Some(mc.as_path()));
+        assert_eq!(server_jar_in(&work, None).as_deref(), Some(work.join("server.jar").as_path()));
+
+        let res = work.join(r"nested\.local\horizon-client\26.3");
+        fs::create_dir_all(&res).unwrap();
+        fs::write(res.join("horizon-resources.json"), b"{}").unwrap();
+        assert_eq!(resource_root(&work).as_deref(), Some(res.as_path()));
+
         let _ = fs::remove_dir_all(&work);
     }
 }
